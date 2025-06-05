@@ -1,0 +1,17 @@
+
+# Artifacts created when building Fortran programs
+*.o
+*.exe
+*.mod
+
+# Data files
+*.nc
+*.bufr_d
+*.bufrtable
+
+# Namelists generated on-the-fly
+larccld.fd/namelist.nasalarc
+
+# Other
+*.swp
+slurm*
