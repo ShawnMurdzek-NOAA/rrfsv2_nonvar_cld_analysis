@@ -51,9 +51,9 @@ subroutine read_MPAS_lat_lon(mpasfile, nCell, lat, lon)
 !
 ! Outputs
 !   lat : real
-!     MPAS cell latitudes (deg N)
+!     MPAS cell latitudes (deg N, range -90 to 90)
 !   lon : real
-!     MPAS cell longitudes (deg E)
+!     MPAS cell longitudes (deg E, range -180 to 180)
 ! 
 !
 ! shawn.s.murdzek@noaa.gov
@@ -67,7 +67,7 @@ subroutine read_MPAS_lat_lon(mpasfile, nCell, lat, lon)
   integer, intent(in) :: nCell
   real, intent(out) :: lat(nCell), lon(nCell)
 
-  integer :: ncid, stat, latid, lonid
+  integer :: ncid, stat, latid, lonid, i
   real, parameter :: pi=3.1415927
 
   stat = nf90_open(mpasfile, nf90_nowrite, ncid)
@@ -80,6 +80,13 @@ subroutine read_MPAS_lat_lon(mpasfile, nCell, lat, lon)
 
   lat = lat * 180 / pi
   lon = lon * 180 / pi
+
+  ! Ensure that longitudes are in the range (-180, 180)
+  do i=1,nCell
+    if (lon(i) > 180) then
+      lon(i) = lon(i) - 360.
+    endif
+  enddo
 
   stat = nf90_close(ncid)
 

@@ -82,10 +82,10 @@ program  process_NASALaRC_cloud
 !
   integer  nfov
   parameter (nfov=160)
-  real, allocatable ::     Pxx(:,:,:),Txx(:,:,:),WPxx(:,:,:)
-  real,allocatable  ::     xdist(:,:,:), xxxdist(:)
+  real, allocatable ::     Pxx(:,:),Txx(:,:),WPxx(:,:)
+  real,allocatable  ::     xdist(:,:), xxxdist(:)
   real     fr,sqrt, qc, type
-  integer,allocatable  ::  PHxx(:,:,:),index(:,:), jndex(:)
+  integer,allocatable  ::  PHxx(:,:),index(:), jndex(:)
   integer  ixx,ii,jj,med_pt,igrid,jgrid  &
                ,ncount,ncount1,ncount2,ii1,jj1,nobs,n
 
@@ -121,6 +121,9 @@ program  process_NASALaRC_cloud
   integer :: status
   character*10  atime
   logical :: ifexist
+
+! For testing haversine subroutine
+  real :: dist(5)
 
 
 !**********************************************************************
@@ -169,10 +172,14 @@ program  process_NASALaRC_cloud
 
      meshfile='mesh.nc'
      call read_MPAS_nCell(meshfile, nCell)
-     write(6,*) 'model nCell =', nCell
+     write(6,*) 'model nCell   =', nCell
      allocate(lat_m(nCell))
      allocate(lon_m(nCell))
      call read_MPAS_lat_lon(meshfile, nCell, lat_m, lon_m)
+     write(6,*) 'max model lat =', maxval(lat_m)
+     write(6,*) 'min model lat =', minval(lat_m)
+     write(6,*) 'max model lon =', maxval(lon_m)
+     write(6,*) 'min model lon =', minval(lon_m)
 
 !
 !  read in the NASA LaRC cloud data
@@ -208,6 +215,28 @@ program  process_NASALaRC_cloud
         if (phase_l(i).eq.5) phase_l(i) = -9  ! bad data
         if (phase_l(i).eq.0) ptop_l(i) = -20.
      enddo
+
+! -----------------------------------------------------------
+! -----------------------------------------------------------
+!     Map each FOV onto model mesh
+! -----------------------------------------------------------
+! -----------------------------------------------------------
+!
+     allocate (Pxx(nCell,nfov),Txx(nCell,nfov),WPxx(nCell,nfov))
+     allocate (xdist(nCell,nfov), xxxdist(nfov))
+     allocate (PHxx(nCell,nfov),index(nCell), jndex(nfov))
+     index=0
+
+! Test haversine distance subroutine (delete later)
+
+     write(6,*) 'lat_l(1) =', lat_l(1)
+     write(6,*) 'lon_l(1) =', lon_l(1)
+     write(6,*) 'lat_m(:5) =', lat_m(:5)
+     write(6,*) 'lon_m(:5) =', lon_m(:5)
+     call compute_haversine_dist(5, lat_l(1), lon_l(1), lat_m(:5), lon_m(:5), dist)
+     write(6,*) 'dist =', dist
+
+! Continue from here next time
 
      write(6,*) "=== RAPHRRR PREPROCCESS SUCCESS ==="
   endif ! if mype==0 
@@ -536,16 +565,38 @@ subroutine read_NASALaRC_cloud_bufr_survey(satfile,satidgoeseast,satidgoeswest,e
 
 end subroutine read_NASALaRC_cloud_bufr_survey
 
-!subroutine compute_haversine_dist(n, latpt, lonpt, lat, lon, dist)
+subroutine compute_haversine_dist(n, latpt, lonpt, lat, lon, dist)
 !
-!  implicit none
+! Compute the distance between two (lat, lon) coordinates in m using the haversine distance formula
 !
-!  integer, intent(in) :: n
-!  real, intent(in) :: latpt, lonpt
-!  real, intent(in) :: lat(n), lon(n)
-!  real, intent(out) :: dist(n)
+! https://scikit-learn.org/stable/modules/generated/sklearn.metrics.pairwise.haversine_distances.html
 !
-!
-!
-!
-!end subroutine compute_haversine_dist
+
+  use constants, only: deg2rad, rearth
+
+  implicit none
+
+  integer, intent(in) :: n
+  real, intent(in) :: latpt, lonpt
+  real, intent(in) :: lat(n), lon(n)  
+  real, intent(out) :: dist(n)
+
+  real :: latptr, lonptr
+  real :: latr(n), lonr(n), asin_arg(n)
+
+  ! Convert inputs to radians
+  latptr = latpt * deg2rad
+  lonptr = lonpt * deg2rad
+  latr = lat * deg2rad
+  lonr = lon * deg2rad
+  write(6,*) latptr, lonptr  ! DEBUG
+  write(6,*) latr            ! DEBUG
+  write(6,*) lonr            ! DEBUG
+  write(6,*) lon             ! DEBUG
+  write(6,*) deg2rad         ! DEBUG
+
+  asin_arg = sqrt((sin(latptr - latr))**2 + (cos(latptr)*cos(latr)*(sin(0.5*(lonptr - lonr)))**2))
+  write(6,*) asin_arg        ! DEBUG
+  dist = rearth * 2 * asin(asin_arg)
+
+end subroutine compute_haversine_dist
