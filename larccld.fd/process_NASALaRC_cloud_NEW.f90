@@ -571,8 +571,7 @@ subroutine compute_haversine_dist(n, latpt, lonpt, lat, lon, dist)
 !
 ! https://scikit-learn.org/stable/modules/generated/sklearn.metrics.pairwise.haversine_distances.html
 !
-
-  use constants, only: deg2rad, rearth
+! Cross-check using this web tool: https://www.nhc.noaa.gov/gccalc.shtml
 
   implicit none
 
@@ -582,21 +581,22 @@ subroutine compute_haversine_dist(n, latpt, lonpt, lat, lon, dist)
   real, intent(out) :: dist(n)
 
   real :: latptr, lonptr
-  real :: latr(n), lonr(n), asin_arg(n)
+  real :: latr(n), lonr(n), dlat(n), dlon(n), asin_arg(n)
+  real :: deg2rad, rearth
+
+  ! Define constants
+  deg2rad = acos(-1.) / 180.
+  rearth = 6371200.
 
   ! Convert inputs to radians
   latptr = latpt * deg2rad
   lonptr = lonpt * deg2rad
   latr = lat * deg2rad
   lonr = lon * deg2rad
-  write(6,*) latptr, lonptr  ! DEBUG
-  write(6,*) latr            ! DEBUG
-  write(6,*) lonr            ! DEBUG
-  write(6,*) lon             ! DEBUG
-  write(6,*) deg2rad         ! DEBUG
+  dlat = latr - latptr
+  dlon = lonr - lonptr
 
-  asin_arg = sqrt((sin(latptr - latr))**2 + (cos(latptr)*cos(latr)*(sin(0.5*(lonptr - lonr)))**2))
-  write(6,*) asin_arg        ! DEBUG
-  dist = rearth * 2 * asin(asin_arg)
+  asin_arg = sin(dlat/2.)**2 + cos(latptr) * cos(latr) * sin(dlon/2.)**2
+  dist = rearth * 2 * asin(sqrt(asin_arg))
 
 end subroutine compute_haversine_dist
