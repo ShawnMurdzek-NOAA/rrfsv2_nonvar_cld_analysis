@@ -95,15 +95,13 @@ program  process_NASALaRC_cloud
   integer            :: analysis_time
   integer            :: ioption
   character(len=100) :: bufrfile
-  integer(i_kind)    :: npts_rad, nptsx, nptsy
+  integer(i_kind)    :: rad_km, nptsx, nptsy
   integer(i_kind)    :: boxhalfx(boxMAX), boxhalfy(boxMAX)
   real (r_kind)      :: boxlat0(boxMAX)
   character(len=20)  :: grid_type
   real (r_kind)      :: userDX
-  namelist/setup/ grid_type,analysis_time, ioption, npts_rad,bufrfile, &
+  namelist/setup/ grid_type,analysis_time, ioption, rad_km,bufrfile, &
                   boxhalfx, boxhalfy, boxlat0,userDX
-   ! for area north of the latitude bigbox_lat0, a large radius npts_rad2 will be used.
-   ! this is to solve the cloud stripe issue in Alaska  -G. Ge Nov. 19, 2019 
 !
 !
 !  ** misc
@@ -111,7 +109,7 @@ program  process_NASALaRC_cloud
 !  real(edp)     :: rlat,rlon
 !  real(edp)     :: xc,yc
 
-  integer i,j,k,ipt,jpt,cfov,ibox
+  integer i,j,k,ipt,jpt,cfov,ibox,imesh
   Integer nf_status,nf_fid,nf_vid
 
   integer :: NCID
@@ -123,7 +121,7 @@ program  process_NASALaRC_cloud
   logical :: ifexist
 
 ! For testing haversine subroutine
-  real :: dist(5)
+  real, allocatable :: dist(:)
 
 
 !**********************************************************************
@@ -141,7 +139,7 @@ program  process_NASALaRC_cloud
 !
      analysis_time=2018051718
      bufrfile='NASALaRCCloudInGSI_bufr.bufr'
-     npts_rad=1
+     rad_km=3
      boxhalfx=-1
      boxhalfy=-1
      boxlat0= 999.0 !don't use variable box by default
@@ -160,8 +158,8 @@ program  process_NASALaRC_cloud
        write(*,setup)
      else
        write(*,*) 'No namelist file exist, use default values'
-       write(*,*) "analysis_time,bufrfile,npts_rad,ioption"
-       write(*,*) analysis_time, trim(bufrfile),npts_rad,ioption
+       write(*,*) "analysis_time,bufrfile,rad_km,ioption"
+       write(*,*) analysis_time, trim(bufrfile),rad_km,ioption
        write(*,*) "boxhalfx,boxhalfy,boxlat0"
        write(*,*) boxhalfx,boxhalfy,boxlat0
      endif
@@ -205,6 +203,8 @@ program  process_NASALaRC_cloud
      call read_NASALaRC_cloud_bufr(satfile,atime,satidgoeseast,satidgoeswest,east_time, west_time,   &   
             maxobs,numobs, ptop_l, teff_l, phase_l, lwp_l,lat_l, lon_l)
 
+     write(6,*)
+     write(6,*) 'number of obs = ', numobs
      write(6,'(6a12)')'ptop', 'teff', 'lat', 'lon', 'lwp', 'phase'
      do j=1,numobs,numobs/50
         write(6,'(4f12.3,f12.4,I12)') ptop_l(j),teff_l(j),lat_l(j),lon_l(j),lwp_l(j),phase_l(j)
@@ -225,18 +225,43 @@ program  process_NASALaRC_cloud
      allocate (Pxx(nCell,nfov),Txx(nCell,nfov),WPxx(nCell,nfov))
      allocate (xdist(nCell,nfov), xxxdist(nfov))
      allocate (PHxx(nCell,nfov),index(nCell), jndex(nfov))
+     allocate (dist(nCell))
      index=0
 
-! Test haversine distance subroutine (delete later)
+     do ipt=1,numobs
+       if ( mod(ipt, 10).eq.0 ) then
+         write(6,*) 'In ipt loop, ipt =', ipt
+       endif
+       if (phase_l(ipt).ge.0) then
+!  Indicates there is some data (not missing)
 
-     write(6,*) 'lat_l(1) =', lat_l(1)
-     write(6,*) 'lon_l(1) =', lon_l(1)
-     write(6,*) 'lat_m(:5) =', lat_m(:5)
-     write(6,*) 'lon_m(:5) =', lon_m(:5)
-     call compute_haversine_dist(5, lat_l(1), lon_l(1), lat_m(:5), lon_m(:5), dist)
-     write(6,*) 'dist =', dist
+! Compute distances between ob and all mesh cells
+         call compute_haversine_dist(nCell, lat_l(ipt), lon_l(ipt), lat_m, lon_m, dist)
 
-! Continue from here next time
+         if ( minval(dist).le.rad_km ) then
+! We have at least one cell within rad_km of the ob
+           do imesh=1,nCell
+             if ( dist(imesh).le.rad_km ) then
+               if (index(imesh).lt.nfov) then
+                 index(imesh) = index(imesh) + 1
+                 Pxx(imesh,index(imesh))   = Ptop_l(ipt)
+                 Txx(imesh,index(imesh))   = Teff_l(ipt)
+                 PHxx(imesh,index(imesh))  = phase_l(ipt)
+                 WPxx(imesh,index(imesh))  = lwp_l(ipt)
+                 xdist(imesh,index(imesh)) = dist(nCell)
+               else
+                 write(6,*) 'ALERT: too many data in one grid, increase nfov'
+                 write(6,*) nfov, imesh
+               endif
+             endif ! mesh cell is within rad_km of ob
+           enddo ! imesh
+         endif ! at least one mesh cell within rad_km
+
+       endif   ! phase_l >= 0
+     enddo   ! ipt
+
+     deallocate(lat_l,lon_l,ptop_l,teff_l,phase_l,lwp_l)
+     write(6,*) 'The max index number is: ', maxval(index)
 
      write(6,*) "=== RAPHRRR PREPROCCESS SUCCESS ==="
   endif ! if mype==0 

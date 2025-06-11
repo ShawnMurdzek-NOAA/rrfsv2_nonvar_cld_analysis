@@ -40,7 +40,7 @@ cat << EOF > namelist.nasalarc
  &setup
   analysis_time = ${valid},
   bufrfile='NASALaRCCloudInGSI_bufr.bufr',
-  npts_rad=3,
+  rad_km=9,
   ioption = 2,
  /
 EOF
