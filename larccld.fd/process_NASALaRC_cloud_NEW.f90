@@ -29,6 +29,10 @@ program  process_NASALaRC_cloud
   use kinds, only: r_kind,i_kind,r_single
   use mpasio, only: read_MPAS_nCell,read_MPAS_lat_lon
 
+  ! Modules from WPS
+  use map_utils
+  use misc_definitions_module
+
   implicit none
 !
   INCLUDE 'netcdf.inc'
@@ -262,6 +266,14 @@ program  process_NASALaRC_cloud
 
      deallocate(lat_l,lon_l,ptop_l,teff_l,phase_l,lwp_l)
      write(6,*) 'The max index number is: ', maxval(index)
+
+!=========================================================================
+! There should be additional code here that has not been added yet. See 
+! process_NASALaRC_cloud.f90
+!
+! Development on this approach stopped b/c it is WAY too slow
+!
+!=========================================================================
 
      write(6,*) "=== RAPHRRR PREPROCCESS SUCCESS ==="
   endif ! if mype==0 
