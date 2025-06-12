@@ -130,9 +130,11 @@ MODULE map_utils
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-   use constants_module
+   use constants_module_wps
    use misc_definitions_module
-   use module_debug
+! Remove module_debug for easier compiling
+! Also commented out all lines that rely on module_debug
+!   use module_debug
 
    ! Define some private constants
    INTEGER, PRIVATE, PARAMETER :: HIGH = 8
@@ -299,7 +301,7 @@ MODULE map_utils
               .NOT.PRESENT(dx) ) THEN
             PRINT '(A,I2)', 'The following are mandatory parameters for projection code : ', proj_code
             PRINT '(A)', ' truelat1, truelat2, lat1, lon1, knowni, knownj, stdlon, dx'
-            call mprintf(.true.,ERROR,'MAP_INIT')
+            !call mprintf(.true.,ERROR,'MAP_INIT')
          END IF
       ELSE IF ( proj_code == PROJ_PS ) THEN
          IF ( .NOT.PRESENT(truelat1) .OR. &
@@ -311,7 +313,7 @@ MODULE map_utils
               .NOT.PRESENT(dx) ) THEN
             PRINT '(A,I2)', 'The following are mandatory parameters for projection code : ', proj_code
             PRINT '(A)', ' truelat1, lat1, lon1, knonwi, knownj, stdlon, dx'
-            call mprintf(.true.,ERROR,'MAP_INIT')
+            !call mprintf(.true.,ERROR,'MAP_INIT')
          END IF
       ELSE IF ( proj_code == PROJ_PS_WGS84 ) THEN
          IF ( .NOT.PRESENT(truelat1) .OR. &
@@ -323,7 +325,7 @@ MODULE map_utils
               .NOT.PRESENT(dx) ) THEN
             PRINT '(A,I2)', 'The following are mandatory parameters for projection code : ', proj_code
             PRINT '(A)', ' truelat1, lat1, lon1, knonwi, knownj, stdlon, dx'
-            call mprintf(.true.,ERROR,'MAP_INIT')
+            !call mprintf(.true.,ERROR,'MAP_INIT')
          END IF
       ELSE IF ( proj_code == PROJ_ALBERS_NAD83 ) THEN
          IF ( .NOT.PRESENT(truelat1) .OR. &
@@ -336,7 +338,7 @@ MODULE map_utils
               .NOT.PRESENT(dx) ) THEN
             PRINT '(A,I2)', 'The following are mandatory parameters for projection code : ', proj_code
             PRINT '(A)', ' truelat1, truelat2, lat1, lon1, knonwi, knownj, stdlon, dx'
-            call mprintf(.true.,ERROR,'MAP_INIT')
+            !call mprintf(.true.,ERROR,'MAP_INIT')
          END IF
       ELSE IF ( proj_code == PROJ_MERC ) THEN
          IF ( .NOT.PRESENT(truelat1) .OR. &
@@ -347,7 +349,7 @@ MODULE map_utils
               .NOT.PRESENT(dx) ) THEN
             PRINT '(A,I2)', 'The following are mandatory parameters for projection code : ', proj_code
             PRINT '(A)', ' truelat1, lat1, lon1, knowni, knownj, dx'
-            call mprintf(.true.,ERROR,'MAP_INIT')
+            !call mprintf(.true.,ERROR,'MAP_INIT')
          END IF
       ELSE IF ( proj_code == PROJ_LATLON ) THEN
          IF ( .NOT.PRESENT(latinc) .OR. &
@@ -358,7 +360,7 @@ MODULE map_utils
               .NOT.PRESENT(lon1) ) THEN
             PRINT '(A,I2)', 'The following are mandatory parameters for projection code : ', proj_code
             PRINT '(A)', ' latinc, loninc, knowni, knownj, lat1, lon1'
-            call mprintf(.true.,ERROR,'MAP_INIT')
+            !call mprintf(.true.,ERROR,'MAP_INIT')
          END IF
       ELSE IF ( proj_code == PROJ_CYL ) THEN
          IF ( .NOT.PRESENT(latinc) .OR. &
@@ -366,7 +368,7 @@ MODULE map_utils
               .NOT.PRESENT(stdlon) ) THEN
             PRINT '(A,I2)', 'The following are mandatory parameters for projection code : ', proj_code
             PRINT '(A)', ' latinc, loninc, stdlon'
-            call mprintf(.true.,ERROR,'MAP_INIT')
+            !call mprintf(.true.,ERROR,'MAP_INIT')
          END IF
       ELSE IF ( proj_code == PROJ_CASSINI ) THEN
          IF ( .NOT.PRESENT(latinc) .OR. &
@@ -380,7 +382,7 @@ MODULE map_utils
               .NOT.PRESENT(stdlon) ) THEN
             PRINT '(A,I2)', 'The following are mandatory parameters for projection code : ', proj_code
             PRINT '(A)', ' latinc, loninc, lat1, lon1, knowni, knownj, lat0, lon0, stdlon'
-            call mprintf(.true.,ERROR,'MAP_INIT')
+            !call mprintf(.true.,ERROR,'MAP_INIT')
          END IF
       ELSE IF ( proj_code == PROJ_GAUSS ) THEN
          IF ( .NOT.PRESENT(nlat) .OR. &
@@ -389,7 +391,7 @@ MODULE map_utils
               .NOT.PRESENT(loninc) ) THEN
             PRINT '(A,I2)', 'The following are mandatory parameters for projection code : ', proj_code
             PRINT '(A)', ' nlat, lat1, lon1, loninc'
-            call mprintf(.true.,ERROR,'MAP_INIT')
+            !call mprintf(.true.,ERROR,'MAP_INIT')
          END IF
       ELSE IF ( proj_code == PROJ_ROTLL ) THEN
          IF ( .NOT.PRESENT(ixdim) .OR. &
@@ -401,11 +403,11 @@ MODULE map_utils
               .NOT.PRESENT(stagger) ) THEN
             PRINT '(A,I2)', 'The following are mandatory parameters for projection code : ', proj_code
             PRINT '(A)', ' ixdim, jydim, phi, lambda, lat1, lon1, stagger'
-            call mprintf(.true.,ERROR,'MAP_INIT')
+            !call mprintf(.true.,ERROR,'MAP_INIT')
          END IF
       ELSE
          PRINT '(A,I2)', 'Unknown projection code: ', proj_code
-         call mprintf(.true.,ERROR,'MAP_INIT')
+         !call mprintf(.true.,ERROR,'MAP_INIT')
       END IF
   
       ! Check for validity of mandatory variables in proj
@@ -413,7 +415,7 @@ MODULE map_utils
          IF ( ABS(lat1) .GT. 90. ) THEN
             PRINT '(A)', 'Latitude of origin corner required as follows:'
             PRINT '(A)', '    -90N <= lat1 < = 90.N'
-            call mprintf(.true.,ERROR,'MAP_INIT')
+            !call mprintf(.true.,ERROR,'MAP_INIT')
          ENDIF
       ENDIF
   
@@ -429,7 +431,7 @@ MODULE map_utils
             IF (abs(dummy_lon1) > 180.) THEN
                PRINT '(A)', 'Longitude of origin required as follows:'
                PRINT '(A)', '   -180E <= lon1 <= 180W'
-               call mprintf(.true.,ERROR,'MAP_INIT')
+               !call mprintf(.true.,ERROR,'MAP_INIT')
             ENDIF
          ENDIF
       ENDIF
@@ -446,7 +448,7 @@ MODULE map_utils
             IF (abs(dummy_lon0) > 180.) THEN
                PRINT '(A)', 'Longitude of pole required as follows:'
                PRINT '(A)', '   -180E <= lon0 <= 180W'
-               call mprintf(.true.,ERROR,'MAP_INIT')
+               !call mprintf(.true.,ERROR,'MAP_INIT')
             ENDIF
          ENDIF
       ENDIF
@@ -454,7 +456,7 @@ MODULE map_utils
       IF ( PRESENT(dx) ) THEN
          IF ((dx .LE. 0.).AND.(proj_code .NE. PROJ_LATLON)) THEN
             PRINT '(A)', 'Require grid spacing (dx) in meters be positive!'
-            call mprintf(.true.,ERROR,'MAP_INIT')
+            !call mprintf(.true.,ERROR,'MAP_INIT')
          ENDIF
       ENDIF
   
@@ -470,7 +472,7 @@ MODULE map_utils
             IF (abs(dummy_stdlon) > 180.) THEN
                PRINT '(A)', 'Need orientation longitude (stdlon) as: '
                PRINT '(A)', '   -180E <= stdlon <= 180W' 
-               call mprintf(.true.,ERROR,'MAP_INIT')
+               !call mprintf(.true.,ERROR,'MAP_INIT')
             ENDIF
          ENDIF
       ENDIF
@@ -478,7 +480,7 @@ MODULE map_utils
       IF ( PRESENT(truelat1) ) THEN
          IF (ABS(truelat1).GT.90.) THEN
             PRINT '(A)', 'Set true latitude 1 for all projections!'
-            call mprintf(.true.,ERROR,'MAP_INIT')
+            !call mprintf(.true.,ERROR,'MAP_INIT')
          ENDIF
       ENDIF
      
@@ -580,7 +582,7 @@ MODULE map_utils
   
       IF (.NOT.proj%init) THEN
          PRINT '(A)', 'You have not called map_set for this projection!'
-         call mprintf(.true.,ERROR,'LATLON_TO_IJ')
+         !call mprintf(.true.,ERROR,'LATLON_TO_IJ')
       ENDIF
   
       SELECT CASE(proj%code)
@@ -617,7 +619,7 @@ MODULE map_utils
    
          CASE DEFAULT
             PRINT '(A,I2)', 'Unrecognized map projection code: ', proj%code
-            call mprintf(.true.,ERROR,'LATLON_TO_IJ')
+            !call mprintf(.true.,ERROR,'LATLON_TO_IJ')
     
       END SELECT
 
@@ -639,7 +641,7 @@ MODULE map_utils
   
       IF (.NOT.proj%init) THEN
          PRINT '(A)', 'You have not called map_set for this projection!'
-         call mprintf(.true.,ERROR,'IJ_TO_LATLON')
+         !call mprintf(.true.,ERROR,'IJ_TO_LATLON')
       ENDIF
       SELECT CASE (proj%code)
   
@@ -672,7 +674,7 @@ MODULE map_utils
    
          CASE DEFAULT
             PRINT '(A,I2)', 'Unrecognized map projection code: ', proj%code
-            call mprintf(.true.,ERROR,'IJ_TO_LATLON')
+            !call mprintf(.true.,ERROR,'IJ_TO_LATLON')
   
       END SELECT
       RETURN
@@ -1934,7 +1936,7 @@ MODULE map_utils
          PRINT '(A,F8.3,A)','The input data gave the starting latitude as ',proj%lat1,'.'
          PRINT '(A,F8.3,A)','This routine computed the starting latitude as +-',ABS(proj%gauss_lat(1)),'.'
          PRINT '(A,F8.3,A)','The difference is larger than 0.01 degrees, which is not expected.'
-         call mprintf(.true.,ERROR,'Gaussian_latitude_computation')
+         !call mprintf(.true.,ERROR,'Gaussian_latitude_computation')
       END IF
  
    END SUBROUTINE set_gauss
@@ -2197,7 +2199,7 @@ MODULE map_utils
   
          IF ( .NOT. found ) THEN
             PRINT '(A)','Troubles in river city.  No bounding values of latitude found in the Gaussian routines.'
-            call mprintf(.true.,ERROR,'Gee_no_bounding_lats_Gaussian')
+            !call mprintf(.true.,ERROR,'Gee_no_bounding_lats_Gaussian')
          END IF
  
          j = ( ( proj%gauss_lat(n_low) - lat                     ) * ( n_low + 1 ) + &
