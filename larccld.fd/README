@@ -1,2 +1,13 @@
 
 constants.f90 and kinds.f90 come from rrfs_utl/rtma_minmaxtrh.fd/minrh.fd
+
+Different code versions
+=======================
+
+process_NASALaRC_cloud.f90 - Original program, plus some extra write statements that I added
+
+process_NASALaRC_cloud_brute_force_haversine.f90 - Initial approach to adapt this program for MPAS.
+    Was ultimately abandonded b/c the approach was too slow (it involved computing the distance
+    between all possible pairs of observations and MPAS mesh cells).
+
+process_NASALaRC_cloud_NEW.f90 - Program with latest enhancements to accomodate the MPAS mesh
