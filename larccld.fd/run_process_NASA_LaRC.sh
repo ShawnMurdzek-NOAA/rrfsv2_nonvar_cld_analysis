@@ -9,10 +9,10 @@
 
 # Input Parameters
 # ================
-obs_dir="/scratch2/BMC/zrtrr/RRFS_RETRO_DATA/obs_rap"
-rrfsv1_home="/scratch2/BMC/wrfruc/murdzek/nonvar_cld_analysis_testing/RRFSv1"
+obs_dir="/scratch4/BMC/wrfruc/murdzek/nonvar_cld_analysis_testing/RRFSv2/test_data/obs"
+rrfsv1_home="/scratch4/BMC/wrfruc/murdzek/nonvar_cld_analysis_testing/RRFSv1"
 rrfsv1_code_dir="${rrfsv1_home}/rrfs-workflow"
-mpas_mesh_file="/scratch2/BMC/wrfruc/murdzek/nonvar_cld_analysis_testing/RRFSv2/test_data/conus3km.grid.nc"
+mpas_mesh_file="/scratch4/BMC/wrfruc/murdzek/nonvar_cld_analysis_testing/RRFSv2/test_data/conus3km.grid.nc"
 valid=2024050813
 
 
@@ -40,7 +40,7 @@ cat << EOF > namelist.nasalarc
  &setup
   analysis_time = ${valid},
   bufrfile='NASALaRCCloudInGSI_bufr.bufr',
-  rad_km=9,
+  npts_rad=3,
   ioption = 2,
  /
 EOF

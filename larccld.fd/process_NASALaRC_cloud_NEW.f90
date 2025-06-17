@@ -37,6 +37,11 @@ program  process_NASALaRC_cloud
 !
   INCLUDE 'netcdf.inc'
 !
+! Map projection
+  type(proj_info) :: proj
+  integer :: nlat, nlon
+  real :: lat1, lon1, truelat1, truelat2, stdlon, dx, knowni, knownj
+!
 ! MPI variables
   integer :: npe, mype,ierror
 !SATID
@@ -86,10 +91,10 @@ program  process_NASALaRC_cloud
 !
   integer  nfov
   parameter (nfov=160)
-  real, allocatable ::     Pxx(:,:),Txx(:,:),WPxx(:,:)
-  real,allocatable  ::     xdist(:,:), xxxdist(:)
+  real, allocatable ::     Pxx(:,:,:),Txx(:,:,:),WPxx(:,:,:)
+  real,allocatable  ::     xdist(:,:,:), xxxdist(:)
   real     fr,sqrt, qc, type
-  integer,allocatable  ::  PHxx(:,:),index(:), jndex(:)
+  integer,allocatable  ::  PHxx(:,:,:),index(:,:), jndex(:)
   integer  ixx,ii,jj,med_pt,igrid,jgrid  &
                ,ncount,ncount1,ncount2,ii1,jj1,nobs,n
 
@@ -99,19 +104,19 @@ program  process_NASALaRC_cloud
   integer            :: analysis_time
   integer            :: ioption
   character(len=100) :: bufrfile
-  integer(i_kind)    :: rad_km, nptsx, nptsy
+  integer(i_kind)    :: npts_rad, nptsx, nptsy
   integer(i_kind)    :: boxhalfx(boxMAX), boxhalfy(boxMAX)
   real (r_kind)      :: boxlat0(boxMAX)
   character(len=20)  :: grid_type
   real (r_kind)      :: userDX
-  namelist/setup/ grid_type,analysis_time, ioption, rad_km,bufrfile, &
+  namelist/setup/ grid_type,analysis_time, ioption, npts_rad,bufrfile, &
                   boxhalfx, boxhalfy, boxlat0,userDX
 !
 !
 !  ** misc
       
-!  real(edp)     :: rlat,rlon
-!  real(edp)     :: xc,yc
+  real :: rlat,rlon
+  real :: xc,yc
 
   integer i,j,k,ipt,jpt,cfov,ibox,imesh
   Integer nf_status,nf_fid,nf_vid
@@ -143,7 +148,7 @@ program  process_NASALaRC_cloud
 !
      analysis_time=2018051718
      bufrfile='NASALaRCCloudInGSI_bufr.bufr'
-     rad_km=3
+     npts_rad=1
      boxhalfx=-1
      boxhalfy=-1
      boxlat0= 999.0 !don't use variable box by default
@@ -162,11 +167,37 @@ program  process_NASALaRC_cloud
        write(*,setup)
      else
        write(*,*) 'No namelist file exist, use default values'
-       write(*,*) "analysis_time,bufrfile,rad_km,ioption"
-       write(*,*) analysis_time, trim(bufrfile),rad_km,ioption
+       write(*,*) "analysis_time,bufrfile,npts_rad,ioption"
+       write(*,*) analysis_time, trim(bufrfile),npts_rad,ioption
        write(*,*) "boxhalfx,boxhalfy,boxlat0"
        write(*,*) boxhalfx,boxhalfy,boxlat0
      endif
+
+!
+! define map projection (HRRR grid is used here)
+!
+
+     lat1 = 38.5
+     lon1 = -97.5
+     truelat1 = 38.5
+     truelat2 = 38.5
+     stdlon = -97.5
+     dx = 3000.
+     nlat = 1060
+     nlon = 1800
+     knowni = 0.5 * nlon - 1.
+     knownj = 0.5 * nlat - 1.
+
+     call map_set(PROJ_LC, &
+                  proj, &
+                  lat1=lat1, &
+                  lon1=lon1, &
+                  truelat1=truelat1, &
+                  truelat2=truelat2, &
+                  stdlon=stdlon, &
+                  dx=dx, &
+                  knowni=knowni, &
+                  knownj=knownj)
 
 !
 ! read in MPAS mesh information
@@ -226,41 +257,56 @@ program  process_NASALaRC_cloud
 ! -----------------------------------------------------------
 ! -----------------------------------------------------------
 !
-     allocate (Pxx(nCell,nfov),Txx(nCell,nfov),WPxx(nCell,nfov))
-     allocate (xdist(nCell,nfov), xxxdist(nfov))
-     allocate (PHxx(nCell,nfov),index(nCell), jndex(nfov))
-     allocate (dist(nCell))
+     allocate (Pxx(nlon,nlat,nfov),Txx(nlon,nlat,nfov),WPxx(nlon,nlat,nfov))
+     allocate (xdist(nlon,nlat,nfov), xxxdist(nfov))
+     allocate (PHxx(nlon,nlat,nfov),index(nlon,nlat), jndex(nfov))
      index=0
 
      do ipt=1,numobs
-       if ( mod(ipt, 10).eq.0 ) then
-         write(6,*) 'In ipt loop, ipt =', ipt
-       endif
        if (phase_l(ipt).ge.0) then
 !  Indicates there is some data (not missing)
 
-! Compute distances between ob and all mesh cells
-         call compute_haversine_dist(nCell, lat_l(ipt), lon_l(ipt), lat_m, lon_m, dist)
+!  to determine npts
+         nptsx=npts_rad !by default
+         nptsy=npts_rad !by default
+         if (lat_l(ipt) > boxlat0(1) ) then
+           do ibox=1,boxMAX !to get the largest possible npts
+             if (lat_l(ipt) > boxlat0(ibox)) then
+               if (boxhalfx(ibox)>0) nptsx=boxhalfx(ibox)
+               if (boxhalfy(ibox)>0) nptsy=boxhalfy(ibox)
+             endif
+           enddo
+         endif
 
-         if ( minval(dist).le.rad_km ) then
-! We have at least one cell within rad_km of the ob
-           do imesh=1,nCell
-             if ( dist(imesh).le.rad_km ) then
-               if (index(imesh).lt.nfov) then
-                 index(imesh) = index(imesh) + 1
-                 Pxx(imesh,index(imesh))   = Ptop_l(ipt)
-                 Txx(imesh,index(imesh))   = Teff_l(ipt)
-                 PHxx(imesh,index(imesh))  = phase_l(ipt)
-                 WPxx(imesh,index(imesh))  = lwp_l(ipt)
-                 xdist(imesh,index(imesh)) = dist(nCell)
-               else
-                 write(6,*) 'ALERT: too many data in one grid, increase nfov'
-                 write(6,*) nfov, imesh
-               endif
-             endif ! mesh cell is within rad_km of ob
-           enddo ! imesh
-         endif ! at least one mesh cell within rad_km
+! * Compute RR grid x/y at lat/lon of cloud data
+         rlon=lon_l(ipt)
+         rlat=lat_l(ipt)
+         call latlon_to_ij(proj,rlat,rlon,xc,yc)
 
+         ii1 = int(xc+0.5)
+         jj1 = int(yc+0.5)
+         if ( (jj1-1.ge.1 .and. jj1+1.le.nlat) .and.  &
+              (ii1-1.ge.1 .and. ii1+1.le.nlon) )    then
+            do jj = max(1,jj1-nptsy), min(nlat,jj1+nptsy)
+               do ii = max(1,ii1-nptsx), min(nlon,ii1+nptsx)
+! * We check multiple data within gridbox
+                  if (index(ii,jj).lt.nfov) then
+                      index(ii,jj) = index(ii,jj) + 1
+
+                     Pxx(ii,jj,index(ii,jj))   = Ptop_l(ipt)
+                     Txx(ii,jj,index(ii,jj))   = Teff_l(ipt)
+                     PHxx(ii,jj,index(ii,jj))  = phase_l(ipt)
+                     WPxx(ii,jj,index(ii,jj))  = lwp_l(ipt)
+                     xdist(ii,jj,index(ii,jj)) =       &
+                         sqrt( (XC+1-ii)**2 + (YC+1-jj)**2 )
+                  else
+                     write(6,*) 'ALERT: too many data in one grid, increase nfov'
+                     write(6,*) nfov, ii,jj
+                  endif
+               enddo ! ii
+            enddo  ! jj
+         endif ! obs is inside the analysis domain
+!
        endif   ! phase_l >= 0
      enddo   ! ipt
 
