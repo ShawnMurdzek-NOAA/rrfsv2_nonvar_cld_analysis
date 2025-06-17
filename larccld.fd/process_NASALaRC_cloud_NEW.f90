@@ -81,11 +81,11 @@ program  process_NASALaRC_cloud
 !
 !  array for RR
 !
-  REAL(r_single), allocatable ::   w_pcld(:,:)
-  REAL(r_single), allocatable ::   w_tcld(:,:)
-  REAL(r_single), allocatable ::   w_frac(:,:)
-  REAL(r_single), allocatable ::   w_lwp (:,:)
-  integer(i_kind),allocatable ::   nlev_cld(:,:)
+  REAL(r_single), allocatable ::   w_pcld(:)
+  REAL(r_single), allocatable ::   w_tcld(:)
+  REAL(r_single), allocatable ::   w_frac(:)
+  REAL(r_single), allocatable ::   w_lwp (:)
+  integer(i_kind),allocatable ::   nlev_cld(:)
 !
 ! Working
 !
@@ -96,7 +96,7 @@ program  process_NASALaRC_cloud
   real     fr,sqrt, qc, type
   integer,allocatable  ::  PHxx(:,:,:),index(:,:), jndex(:)
   integer  ixx,ii,jj,med_pt,igrid,jgrid  &
-               ,ncount,ncount1,ncount2,ii1,jj1,nobs,n
+               ,ncount,ncount1,ncount2,ii1,jj1,nobs,n,im
 
 !
 ! namelist
@@ -313,11 +313,103 @@ program  process_NASALaRC_cloud
      deallocate(lat_l,lon_l,ptop_l,teff_l,phase_l,lwp_l)
      write(6,*) 'The max index number is: ', maxval(index)
 
+!
+!  Now, map the observations to the MPAS mesh
+!
+     allocate(w_pcld(nCell))
+     allocate(w_tcld(nCell))
+     allocate(w_frac(nCell))
+     allocate(w_lwp(nCell))
+     allocate(nlev_cld(nCell))
+     w_pcld=99999.
+     w_tcld=99999.
+     w_frac=99999.
+     w_lwp=99999.
+     nlev_cld = 99999
+
+     do im=1,nCell
+
+! Compute map projection x/y at lat/lon of MPAS cell
+       rlon=lon_m(im)
+       rlat=lat_m(im)
+       call latlon_to_ij(proj,rlat,rlon,xc,yc)
+      
+! Determine closest x/y integer coordinate to MPAS cell 
+       ii1 = int(xc+0.5)
+       jj1 = int(yc+0.5)
+
+       if ((index(ii1,jj1) >= 1 .and. index(ii1,jj1) < 3) .and. userDX < 7000.0) then
+          w_pcld(im) = Pxx(ii1,jj1,1) ! hPa
+          w_tcld(im) = Txx(ii1,jj1,1) ! K
+          w_lwp(im) = WPxx(ii1,jj1,1) ! g/m^2
+          w_frac(im) = 1
+          nlev_cld(im) = 1
+          if (w_pcld(im).eq.-20) then
+               w_pcld(im) = 1013. ! hPa - no cloud
+               w_frac(im)=0.0
+               nlev_cld(im) = 0
+          end if
+       elseif(index(ii1,jj1) .ge. 3) then
+
+! * We decided to use nearest neighborhood for ECA values,
+! *     a kind of convective signal from GOES platform...
+!
+! * Sort to find closest distance if more than one sample
+          if(ioption == 1) then    !nearest neighborhood
+            do i=1,index(ii1,jj1)
+              jndex(i) = i
+              xxxdist(i) = xdist(ii1,jj1,i)
+            enddo
+            call sortmed(xxxdist,index(ii1,jj1),jndex,fr)
+            w_pcld(im) = Pxx(ii1,jj1,jndex(1))
+            w_tcld(im) = Txx(ii1,jj1,jndex(1))
+            w_lwp(im) = WPxx(ii1,jj1,jndex(1))
+          endif
+! * Sort to find median value 
+          if(ioption .eq. 2) then    !pick median 
+            do i=1,index(ii1,jj1)
+              jndex(i) = i
+              xxxdist(i) = Pxx(ii1,jj1,i)
+            enddo
+            call sortmed(xxxdist,index(ii1,jj1),jndex,fr)
+            med_pt = index(ii1,jj1)/2  + 1
+            w_pcld(im) = Pxx(ii1,jj1,jndex(med_pt)) ! hPa
+            w_tcld(im) = Txx(ii1,jj1,jndex(med_pt)) ! K
+            w_lwp(im) = WPxx(ii1,jj1,jndex(med_pt)) !  g/m^2
+          endif   ! pick median
+!
+! missing pcld
+          if (w_pcld(im).eq.-20) then
+             w_pcld(im) = 1013. ! hPa - no cloud
+             w_frac(im)=0.0
+             nlev_cld(im) = 0
+! cloud fraction based on phase (0 are clear), what about -9 ????
+          elseif( w_pcld(im) < 1012.99) then
+             cfov = 0
+             do i=1,index(ii1,jj1)
+               if(PHxx(ii1,jj1,i) .gt. 0.1) cfov = cfov + 1
+             enddo
+             w_frac(im) = float(cfov)/(max(1,index(ii1,jj1)))     !  fraction
+             if( w_frac(im) > 0.01 ) nlev_cld(im) = 1
+          endif
+       endif   ! index > 3
+     enddo  !im
+
+     deallocate (Pxx,Txx,WPxx)
+     deallocate (xdist, xxxdist)
+     deallocate (PHxx, jndex)
+!
+!  write results
+!
+     write(6,'(7a12)') 'lat', 'lon', 'w_pcld', 'w_tcld', 'w_frac', 'w_lwp ', 'nlev_cld'
+     do im=1,nCell,nCell/10000
+        write(6,'(5f12.3,f12.4,I12)') lat_m(im),lon_m(im),w_pcld(im),&
+                w_tcld(im),w_frac(im),w_lwp(im),nlev_cld(im)
+     enddo
+
 !=========================================================================
 ! There should be additional code here that has not been added yet. See 
 ! process_NASALaRC_cloud.f90
-!
-! Development on this approach stopped b/c it is WAY too slow
 !
 !=========================================================================
 
