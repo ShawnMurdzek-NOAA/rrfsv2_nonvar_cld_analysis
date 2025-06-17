@@ -1,5 +1,5 @@
 
-rrfsv1_code_dir="/scratch2/BMC/wrfruc/murdzek/nonvar_cld_analysis_testing/RRFSv1/rrfs-workflow"
+rrfsv1_code_dir="/scratch4/BMC/wrfruc/murdzek/nonvar_cld_analysis_testing/RRFSv1/rrfs-workflow"
 
 echo 'Cleaning...'
 rm *.o
