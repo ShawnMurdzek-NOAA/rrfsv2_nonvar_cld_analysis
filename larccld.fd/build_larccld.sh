@@ -1,5 +1,5 @@
 
-rrfsv1_code_dir="/scratch4/BMC/wrfruc/murdzek/nonvar_cld_analysis_testing/RRFSv1/rrfs-workflow"
+env_dir='../env/'
 map_util_dir='../wps_map_utils/'
 
 echo 'Cleaning...'
@@ -7,9 +7,7 @@ rm *.o
 rm *.mod
 
 echo 'Configuring Environment...'
-module purge
-module use ${rrfsv1_code_dir}/modulefiles
-module load build_hera_intel
+source ${env_dir}/hera.env
 module list
 echo
 

@@ -8,6 +8,7 @@
 *.nc
 *.bufr_d
 *.bufrtable
+!fix/*.bufrtable
 
 # Namelists generated on-the-fly
 larccld.fd/namelist.nasalarc

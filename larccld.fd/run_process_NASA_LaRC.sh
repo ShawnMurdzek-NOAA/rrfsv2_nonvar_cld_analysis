@@ -9,9 +9,9 @@
 
 # Input Parameters
 # ================
+env_dir='../env/'
+fix_dir='../fix/'
 obs_dir="/scratch4/BMC/wrfruc/murdzek/nonvar_cld_analysis_testing/RRFSv2/test_data/obs"
-rrfsv1_home="/scratch4/BMC/wrfruc/murdzek/nonvar_cld_analysis_testing/RRFSv1"
-rrfsv1_code_dir="${rrfsv1_home}/rrfs-workflow"
 mpas_mesh_file="/scratch4/BMC/wrfruc/murdzek/nonvar_cld_analysis_testing/RRFSv2/test_data/conus3km.grid.nc"
 valid=2024050813
 
@@ -21,9 +21,7 @@ valid=2024050813
 
 # Load environment
 echo "Configuring environment"
-module purge
-module use ${rrfsv1_code_dir}/modulefiles
-module load build_hera_intel
+source ${env_dir}/hera.env
 module list
 echo
 
@@ -31,7 +29,7 @@ echo
 #ulimit -a
 
 # Get input data
-cp ${rrfsv1_code_dir}/fix/gsi/prepobs_prep_RAP.bufrtable prepobs_prep.bufrtable
+cp ${fix_dir}/prepobs_prep_RAP.bufrtable prepobs_prep.bufrtable
 cp ${obs_dir}/${valid}.rap.t${valid:8:2}z.lgycld.tm00.bufr_d lgycld.bufr_d
 cp ${mpas_mesh_file} mesh.nc
 
@@ -44,6 +42,14 @@ cat << EOF > namelist.nasalarc
   ioption = 2,
  /
 EOF
+
+# Clean old text files
+clean_files=( 'nasa_larc_obs_interp.txt' 'nasa_larc_obs_raw.txt' )
+for f in ${clean_files[@]}; do
+  if [[ -f ${f} ]]; then
+    rm ${f}
+  fi
+done
 
 # Run program
 date
