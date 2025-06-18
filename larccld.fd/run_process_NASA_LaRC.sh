@@ -9,6 +9,7 @@
 
 # Input Parameters
 # ================
+machine='ursa'
 env_dir='../env/'
 fix_dir='../fix/'
 obs_dir="/scratch4/BMC/wrfruc/murdzek/nonvar_cld_analysis_testing/RRFSv2/test_data/obs"
@@ -21,7 +22,7 @@ valid=2024050813
 
 # Load environment
 echo "Configuring environment"
-source ${env_dir}/hera.env
+source ${env_dir}/${machine}.env
 module list
 echo
 
