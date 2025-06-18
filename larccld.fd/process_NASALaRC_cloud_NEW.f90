@@ -132,7 +132,6 @@ program  process_NASALaRC_cloud
 
   integer :: noutside
 
-
 !**********************************************************************
 !
 !            END OF DECLARATIONS....start of program
@@ -264,6 +263,16 @@ program  process_NASALaRC_cloud
         if (phase_l(i).eq.5) phase_l(i) = -9  ! bad data
         if (phase_l(i).eq.0) ptop_l(i) = -20.
      enddo
+
+!
+! DEBUGGING: Write out raw NASA LaRC data to text file
+!
+     open(12, file="nasa_larc_obs_raw.txt", status="new", action="write")
+     write(12,'(6a12)') 'lat', 'lon', 'ptop', 'teff', 'lwp', 'phase'
+     do j=1,numobs
+        write(12,'(4f12.3,f12.4,I12)') lat_l(j),lon_l(j),ptop_l(j),teff_l(j),lwp_l(j),phase_l(j)
+     enddo
+     close(12)
 
 ! -----------------------------------------------------------
 ! -----------------------------------------------------------
@@ -432,6 +441,16 @@ program  process_NASALaRC_cloud
         write(6,'(I12,5f12.3,f12.4,I12)') im,lat_m(im),lon_m(im),w_pcld(im),&
                 w_tcld(im),w_frac(im),w_lwp(im),nlev_cld(im)
      enddo
+
+!
+! DEBUGGING: Write out interpolated NASA LaRC data to text file
+!
+     open(13, file="nasa_larc_obs_interp.txt", status="new", action="write")
+     write(13,'(7a12)') 'lat', 'lon', 'ptop', 'teff', 'lwp', 'frac', 'nlev_cld'
+     do j=1,nCell
+        write(13,'(4f12.3,f12.4,f12.4,I12)') lat_m(j),lon_m(j),w_pcld(j),w_tcld(j),w_lwp(j),w_frac(j),nlev_cld(j)
+     enddo
+     close(13)
 
 !=========================================================================
 ! There should be additional code here that has not been added yet. See 

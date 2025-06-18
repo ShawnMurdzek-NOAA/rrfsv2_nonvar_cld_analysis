@@ -15,3 +15,5 @@ larccld.fd/namelist.nasalarc
 # Other
 *.swp
 slurm*
+*.png
+*.txt
