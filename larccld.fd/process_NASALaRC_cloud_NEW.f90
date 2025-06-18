@@ -41,6 +41,7 @@ program  process_NASALaRC_cloud
   type(proj_info) :: proj
   integer :: nlat, nlon
   real :: lat1, lon1, truelat1, truelat2, stdlon, dx, knowni, knownj
+  real :: minlat, maxlat, minlon, maxlon
 !
 ! MPI variables
   integer :: npe, mype,ierror
@@ -129,8 +130,7 @@ program  process_NASALaRC_cloud
   character*10  atime
   logical :: ifexist
 
-! For testing haversine subroutine
-  real, allocatable :: dist(:)
+  integer :: noutside
 
 
 !**********************************************************************
@@ -199,20 +199,34 @@ program  process_NASALaRC_cloud
                   knowni=knowni, &
                   knownj=knownj)
 
+! get corners of map projection
+
+     call ij_to_latlon(proj, 0., 0., minlat, minlon)
+     call ij_to_latlon(proj, real(nlon), real(nlat), maxlat, maxlon)
+
+     write(6,*)
+     write(6,*) 'map projection corners:'
+     write(6,*) 'llcrnr lat =', minlat 
+     write(6,*) 'llcrnr lon =', minlon 
+     write(6,*) 'urcrnr lat =', maxlat 
+     write(6,*) 'urcrnr lon =', maxlon 
+
 !
 ! read in MPAS mesh information
 !
 
      meshfile='mesh.nc'
      call read_MPAS_nCell(meshfile, nCell)
+     write(6,*)
      write(6,*) 'model nCell   =', nCell
      allocate(lat_m(nCell))
      allocate(lon_m(nCell))
      call read_MPAS_lat_lon(meshfile, nCell, lat_m, lon_m)
-     write(6,*) 'max model lat =', maxval(lat_m)
      write(6,*) 'min model lat =', minval(lat_m)
-     write(6,*) 'max model lon =', maxval(lon_m)
      write(6,*) 'min model lon =', minval(lon_m)
+     write(6,*) 'max model lat =', maxval(lat_m)
+     write(6,*) 'max model lon =', maxval(lon_m)
+     write(6,*)
 
 !
 !  read in the NASA LaRC cloud data
@@ -327,6 +341,8 @@ program  process_NASALaRC_cloud
      w_lwp=99999.
      nlev_cld = 99999
 
+     noutside = 0
+
      do im=1,nCell
 
 ! Compute map projection x/y at lat/lon of MPAS cell
@@ -338,61 +354,66 @@ program  process_NASALaRC_cloud
        ii1 = int(xc+0.5)
        jj1 = int(yc+0.5)
 
-       if ((index(ii1,jj1) >= 1 .and. index(ii1,jj1) < 3) .and. userDX < 7000.0) then
-          w_pcld(im) = Pxx(ii1,jj1,1) ! hPa
-          w_tcld(im) = Txx(ii1,jj1,1) ! K
-          w_lwp(im) = WPxx(ii1,jj1,1) ! g/m^2
-          w_frac(im) = 1
-          nlev_cld(im) = 1
-          if (w_pcld(im).eq.-20) then
-               w_pcld(im) = 1013. ! hPa - no cloud
-               w_frac(im)=0.0
-               nlev_cld(im) = 0
-          end if
-       elseif(index(ii1,jj1) .ge. 3) then
+       if (ii1 < 1 .or. jj1 < 1 .or. ii1 > nlon .or. jj1 > nlat) then
+         noutside = noutside + 1
+       else
+
+         if ((index(ii1,jj1) >= 1 .and. index(ii1,jj1) < 3) .and. userDX < 7000.0) then
+            w_pcld(im) = Pxx(ii1,jj1,1) ! hPa
+            w_tcld(im) = Txx(ii1,jj1,1) ! K
+            w_lwp(im) = WPxx(ii1,jj1,1) ! g/m^2
+            w_frac(im) = 1
+            nlev_cld(im) = 1
+            if (w_pcld(im).eq.-20) then
+                 w_pcld(im) = 1013. ! hPa - no cloud
+                 w_frac(im)=0.0
+                 nlev_cld(im) = 0
+            end if
+         elseif(index(ii1,jj1) .ge. 3) then
 
 ! * We decided to use nearest neighborhood for ECA values,
 ! *     a kind of convective signal from GOES platform...
 !
 ! * Sort to find closest distance if more than one sample
-          if(ioption == 1) then    !nearest neighborhood
-            do i=1,index(ii1,jj1)
-              jndex(i) = i
-              xxxdist(i) = xdist(ii1,jj1,i)
-            enddo
-            call sortmed(xxxdist,index(ii1,jj1),jndex,fr)
-            w_pcld(im) = Pxx(ii1,jj1,jndex(1))
-            w_tcld(im) = Txx(ii1,jj1,jndex(1))
-            w_lwp(im) = WPxx(ii1,jj1,jndex(1))
-          endif
+            if(ioption == 1) then    !nearest neighborhood
+              do i=1,index(ii1,jj1)
+                jndex(i) = i
+                xxxdist(i) = xdist(ii1,jj1,i)
+              enddo
+              call sortmed(xxxdist,index(ii1,jj1),jndex,fr)
+              w_pcld(im) = Pxx(ii1,jj1,jndex(1))
+              w_tcld(im) = Txx(ii1,jj1,jndex(1))
+              w_lwp(im) = WPxx(ii1,jj1,jndex(1))
+            endif
 ! * Sort to find median value 
-          if(ioption .eq. 2) then    !pick median 
-            do i=1,index(ii1,jj1)
-              jndex(i) = i
-              xxxdist(i) = Pxx(ii1,jj1,i)
-            enddo
-            call sortmed(xxxdist,index(ii1,jj1),jndex,fr)
-            med_pt = index(ii1,jj1)/2  + 1
-            w_pcld(im) = Pxx(ii1,jj1,jndex(med_pt)) ! hPa
-            w_tcld(im) = Txx(ii1,jj1,jndex(med_pt)) ! K
-            w_lwp(im) = WPxx(ii1,jj1,jndex(med_pt)) !  g/m^2
-          endif   ! pick median
+            if(ioption .eq. 2) then    !pick median 
+              do i=1,index(ii1,jj1)
+                jndex(i) = i
+                xxxdist(i) = Pxx(ii1,jj1,i)
+              enddo
+              call sortmed(xxxdist,index(ii1,jj1),jndex,fr)
+              med_pt = index(ii1,jj1)/2  + 1
+              w_pcld(im) = Pxx(ii1,jj1,jndex(med_pt)) ! hPa
+              w_tcld(im) = Txx(ii1,jj1,jndex(med_pt)) ! K
+              w_lwp(im) = WPxx(ii1,jj1,jndex(med_pt)) !  g/m^2
+            endif   ! pick median
 !
 ! missing pcld
-          if (w_pcld(im).eq.-20) then
-             w_pcld(im) = 1013. ! hPa - no cloud
-             w_frac(im)=0.0
-             nlev_cld(im) = 0
+            if (w_pcld(im).eq.-20) then
+               w_pcld(im) = 1013. ! hPa - no cloud
+               w_frac(im)=0.0
+               nlev_cld(im) = 0
 ! cloud fraction based on phase (0 are clear), what about -9 ????
-          elseif( w_pcld(im) < 1012.99) then
-             cfov = 0
-             do i=1,index(ii1,jj1)
-               if(PHxx(ii1,jj1,i) .gt. 0.1) cfov = cfov + 1
-             enddo
-             w_frac(im) = float(cfov)/(max(1,index(ii1,jj1)))     !  fraction
-             if( w_frac(im) > 0.01 ) nlev_cld(im) = 1
-          endif
-       endif   ! index > 3
+            elseif( w_pcld(im) < 1012.99) then
+               cfov = 0
+               do i=1,index(ii1,jj1)
+                 if(PHxx(ii1,jj1,i) .gt. 0.1) cfov = cfov + 1
+               enddo
+               w_frac(im) = float(cfov)/(max(1,index(ii1,jj1)))     !  fraction
+               if( w_frac(im) > 0.01 ) nlev_cld(im) = 1
+            endif
+         endif   ! index > 3
+       endif   ! check to see if index in map projection domain
      enddo  !im
 
      deallocate (Pxx,Txx,WPxx)
@@ -401,16 +422,20 @@ program  process_NASALaRC_cloud
 !
 !  write results
 !
-     write(6,'(7a12)') 'lat', 'lon', 'w_pcld', 'w_tcld', 'w_frac', 'w_lwp ', 'nlev_cld'
-     do im=1,nCell,nCell/10000
-        write(6,'(5f12.3,f12.4,I12)') lat_m(im),lon_m(im),w_pcld(im),&
+
+     write(6,*)
+     write(6,*) 'number of MPAS cells outside of map projection =', noutside
+     write(6,*) 'percentage of MPAS cells outside of map projection =', 100. * real(noutside) / real(nCell)
+     write(6,*)
+     write(6,'(8a12)') 'im', 'lat', 'lon', 'w_pcld', 'w_tcld', 'w_frac', 'w_lwp ', 'nlev_cld'
+     do im=1,nCell,nCell/50
+        write(6,'(I12,5f12.3,f12.4,I12)') im,lat_m(im),lon_m(im),w_pcld(im),&
                 w_tcld(im),w_frac(im),w_lwp(im),nlev_cld(im)
      enddo
 
 !=========================================================================
 ! There should be additional code here that has not been added yet. See 
 ! process_NASALaRC_cloud.f90
-!
 !=========================================================================
 
      write(6,*) "=== RAPHRRR PREPROCCESS SUCCESS ==="
