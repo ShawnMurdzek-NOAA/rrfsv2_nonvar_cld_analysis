@@ -112,8 +112,9 @@ program  process_NASALaRC_cloud
   real (r_kind)      :: boxlat0(boxMAX)
   character(len=20)  :: grid_type
   real (r_kind)      :: userDX
+  integer            :: debug
   namelist/setup/ grid_type,analysis_time, ioption, npts_rad,bufrfile, &
-                  boxhalfx, boxhalfy, boxlat0,userDX
+                  boxhalfx, boxhalfy, boxlat0,userDX,debug
 !
 !
 !  ** misc
@@ -159,6 +160,7 @@ program  process_NASALaRC_cloud
      ioption = 2
      grid_type="none"
      userDX=3000.0
+     debug=0
  
      inquire(file='namelist.nasalarc', EXIST=ifexist )
      if(ifexist) then
@@ -171,8 +173,8 @@ program  process_NASALaRC_cloud
        write(*,*) 'No namelist file exist, use default values'
        write(*,*) "analysis_time,bufrfile,npts_rad,ioption"
        write(*,*) analysis_time, trim(bufrfile),npts_rad,ioption
-       write(*,*) "boxhalfx,boxhalfy,boxlat0"
-       write(*,*) boxhalfx,boxhalfy,boxlat0
+       write(*,*) "boxhalfx,boxhalfy,boxlat0,debug"
+       write(*,*) boxhalfx,boxhalfy,boxlat0,debug
      endif
 
 !
@@ -280,12 +282,14 @@ program  process_NASALaRC_cloud
 !
 ! DEBUGGING: Write out raw NASA LaRC data to text file
 !
-     open(12, file="nasa_larc_obs_raw.txt", status="new", action="write")
-     write(12,'(6a12)') 'lat', 'lon', 'ptop', 'teff', 'lwp', 'phase'
-     do j=1,numobs
-        write(12,'(4f12.3,f12.4,I12)') lat_l(j),lon_l(j),ptop_l(j),teff_l(j),lwp_l(j),phase_l(j)
-     enddo
-     close(12)
+     if (debug > 0) then
+       open(12, file="nasa_larc_obs_raw.txt", status="new", action="write")
+       write(12,'(6a12)') 'lat', 'lon', 'ptop', 'teff', 'lwp', 'phase'
+       do j=1,numobs
+          write(12,'(4f12.3,f12.4,I12)') lat_l(j),lon_l(j),ptop_l(j),teff_l(j),lwp_l(j),phase_l(j)
+       enddo
+       close(12)
+     endif
 
 ! -----------------------------------------------------------
 ! -----------------------------------------------------------
@@ -463,12 +467,14 @@ program  process_NASALaRC_cloud
 !
 ! DEBUGGING: Write out interpolated NASA LaRC data to text file
 !
-     open(13, file="nasa_larc_obs_interp.txt", status="new", action="write")
-     write(13,'(7a12)') 'lat', 'lon', 'ptop', 'teff', 'lwp', 'frac', 'nlev_cld'
-     do j=1,nCell
-        write(13,'(4f12.3,f12.4,f12.4,I12)') lat_m(j),lon_m(j),w_pcld(j),w_tcld(j),w_lwp(j),w_frac(j),nlev_cld(j)
-     enddo
-     close(13)
+     if (debug > 0) then
+       open(13, file="nasa_larc_obs_interp.txt", status="new", action="write")
+       write(13,'(7a12)') 'lat', 'lon', 'ptop', 'teff', 'lwp', 'frac', 'nlev_cld'
+       do j=1,nCell
+          write(13,'(4f12.3,f12.4,f12.4,I12)') lat_m(j),lon_m(j),w_pcld(j),w_tcld(j),w_lwp(j),w_frac(j),nlev_cld(j)
+       enddo
+       close(13)
+     endif
 
 !=========================================================================
 ! There should be additional code here that has not been added yet. See 
