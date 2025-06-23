@@ -41,7 +41,8 @@ program  process_NASALaRC_cloud
   type(proj_info) :: proj
   integer :: nlat, nlon
   real :: lat1, lon1, truelat1, truelat2, stdlon, dx, knowni, knownj
-  real :: minlat, maxlat, minlon, maxlon
+  real :: ll_lat, ur_lat, left_lat, bot_lat, right_lat, top_lat
+  real :: ll_lon, ur_lon, left_lon, bot_lon, right_lon, top_lon
 !
 ! MPI variables
   integer :: npe, mype,ierror
@@ -175,7 +176,7 @@ program  process_NASALaRC_cloud
      endif
 
 !
-! define map projection (HRRR grid is used here)
+! define map projection (Lambert Conformal from HRRR
 !
 
      lat1 = 38.5
@@ -184,8 +185,12 @@ program  process_NASALaRC_cloud
      truelat2 = 38.5
      stdlon = -97.5
      dx = 3000.
-     nlat = 1060
-     nlon = 1800
+! HRRR grid
+!     nlat = 1060
+!     nlon = 1800
+! Slightly larger grid for MPAS
+     nlat = 1200
+     nlon = 2000
      knowni = 0.5 * nlon - 1.
      knownj = 0.5 * nlat - 1.
 
@@ -202,15 +207,21 @@ program  process_NASALaRC_cloud
 
 ! get corners of map projection
 
-     call ij_to_latlon(proj, 0., 0., minlat, minlon)
-     call ij_to_latlon(proj, real(nlon), real(nlat), maxlat, maxlon)
+     call ij_to_latlon(proj, 0., 0., ll_lat, ll_lon)
+     call ij_to_latlon(proj, real(nlon), real(nlat), ur_lat, ur_lon)
+     call ij_to_latlon(proj, 0., real(knowni), left_lat, left_lon)
+     call ij_to_latlon(proj, real(knownj), 0., bot_lat, bot_lon)
+     call ij_to_latlon(proj, real(nlon), knowni, right_lat, right_lon)
+     call ij_to_latlon(proj, real(knownj), real(nlat), top_lat, top_lon)
 
      write(6,*)
-     write(6,*) 'map projection corners:'
-     write(6,*) 'llcrnr lat =', minlat 
-     write(6,*) 'llcrnr lon =', minlon 
-     write(6,*) 'urcrnr lat =', maxlat 
-     write(6,*) 'urcrnr lon =', maxlon 
+     write(6,*) 'map projection:'
+     write(6,*) 'llcrnr    =', ll_lat, ll_lon
+     write(6,*) 'urcrnr    =', ur_lat, ur_lon
+     write(6,*) 'left ctr  =', left_lat, left_lon
+     write(6,*) 'bot ctr   =', bot_lat, bot_lon
+     write(6,*) 'right ctr =', right_lat, right_lon
+     write(6,*) 'top ctr   =', top_lat, top_lon
 
 !
 ! read in MPAS mesh information
