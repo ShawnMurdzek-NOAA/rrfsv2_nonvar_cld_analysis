@@ -94,6 +94,7 @@ program  process_NASALaRC_cloud
   parameter (nfov=160)
   real, allocatable ::     Pxx(:,:,:),Txx(:,:,:),WPxx(:,:,:)
   real,allocatable  ::     xdist(:,:,:), xxxdist(:)
+  real, allocatable ::     latxx(:,:,:),lonxx(:,:,:)
   real     fr,sqrt, qc, type
   integer,allocatable  ::  PHxx(:,:,:),index(:,:), jndex(:)
   integer  ixx,ii,jj,med_pt,igrid,jgrid  &
@@ -118,6 +119,7 @@ program  process_NASALaRC_cloud
       
   real :: rlat,rlon
   real :: xc,yc
+  real :: dist
 
   integer i,j,k,ipt,jpt,cfov,ibox,imesh
   Integer nf_status,nf_fid,nf_vid
@@ -282,6 +284,7 @@ program  process_NASALaRC_cloud
 !
      allocate (Pxx(nlon,nlat,nfov),Txx(nlon,nlat,nfov),WPxx(nlon,nlat,nfov))
      allocate (xdist(nlon,nlat,nfov), xxxdist(nfov))
+     allocate (latxx(nlon,nlat,nfov), lonxx(nlon,nlat,nfov))
      allocate (PHxx(nlon,nlat,nfov),index(nlon,nlat), jndex(nfov))
      index=0
 
@@ -320,8 +323,10 @@ program  process_NASALaRC_cloud
                      Txx(ii,jj,index(ii,jj))   = Teff_l(ipt)
                      PHxx(ii,jj,index(ii,jj))  = phase_l(ipt)
                      WPxx(ii,jj,index(ii,jj))  = lwp_l(ipt)
-                     xdist(ii,jj,index(ii,jj)) =       &
-                         sqrt( (XC+1-ii)**2 + (YC+1-jj)**2 )
+                     latxx(ii,jj,index(ii,jj)) = rlat
+                     lonxx(ii,jj,index(ii,jj)) = rlon
+                     !xdist(ii,jj,index(ii,jj)) =       &
+                     !    sqrt( (XC+1-ii)**2 + (YC+1-jj)**2 )
                   else
                      write(6,*) 'ALERT: too many data in one grid, increase nfov'
                      write(6,*) nfov, ii,jj
@@ -387,7 +392,9 @@ program  process_NASALaRC_cloud
             if(ioption == 1) then    !nearest neighborhood
               do i=1,index(ii1,jj1)
                 jndex(i) = i
-                xxxdist(i) = xdist(ii1,jj1,i)
+                call compute_haversine_dist(rlat, rlon, latxx(ii1,jj1,i), lonxx(ii1,jj1,i), dist) 
+                xxxdist(i) = dist
+                !xxxdist(i) = xdist(ii1,jj1,i)
               enddo
               call sortmed(xxxdist,index(ii1,jj1),jndex,fr)
               w_pcld(im) = Pxx(ii1,jj1,jndex(1))
@@ -784,7 +791,7 @@ subroutine read_NASALaRC_cloud_bufr_survey(satfile,satidgoeseast,satidgoeswest,e
 
 end subroutine read_NASALaRC_cloud_bufr_survey
 
-subroutine compute_haversine_dist(n, latpt, lonpt, lat, lon, dist)
+subroutine compute_haversine_dist(lat1, lon1, lat2, lon2, dist)
 !
 ! Compute the distance between two (lat, lon) coordinates in m using the haversine distance formula
 !
@@ -794,13 +801,10 @@ subroutine compute_haversine_dist(n, latpt, lonpt, lat, lon, dist)
 
   implicit none
 
-  integer, intent(in) :: n
-  real, intent(in) :: latpt, lonpt
-  real, intent(in) :: lat(n), lon(n)  
-  real, intent(out) :: dist(n)
+  real, intent(in) :: lat1, lon1, lat2, lon2
+  real, intent(out) :: dist
 
-  real :: latptr, lonptr
-  real :: latr(n), lonr(n), dlat(n), dlon(n), asin_arg(n)
+  real :: lat1r, lon1r, lat2r, lon2r, dlat, dlon, asin_arg
   real :: deg2rad, rearth
 
   ! Define constants
@@ -808,14 +812,14 @@ subroutine compute_haversine_dist(n, latpt, lonpt, lat, lon, dist)
   rearth = 6371200.
 
   ! Convert inputs to radians
-  latptr = latpt * deg2rad
-  lonptr = lonpt * deg2rad
-  latr = lat * deg2rad
-  lonr = lon * deg2rad
-  dlat = latr - latptr
-  dlon = lonr - lonptr
+  lat1r = lat1 * deg2rad
+  lon1r = lon1 * deg2rad
+  lat2r = lat2 * deg2rad
+  lon2r = lon2 * deg2rad
+  dlat = lat2r - lat1r
+  dlon = lon2r - lon1r
 
-  asin_arg = sin(dlat/2.)**2 + cos(latptr) * cos(latr) * sin(dlon/2.)**2
+  asin_arg = sin(dlat/2.)**2 + cos(lat1r) * cos(lat2r) * sin(dlon/2.)**2
   dist = rearth * 2 * asin(sqrt(asin_arg))
 
 end subroutine compute_haversine_dist
