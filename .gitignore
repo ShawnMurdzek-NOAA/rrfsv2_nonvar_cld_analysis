@@ -8,6 +8,7 @@
 *.nc
 *.bufr_d
 *.bufrtable
+*.bin
 !fix/*.bufrtable
 
 # Namelists generated on-the-fly

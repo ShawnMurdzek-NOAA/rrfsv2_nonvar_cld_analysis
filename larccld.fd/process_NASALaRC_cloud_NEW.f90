@@ -463,7 +463,16 @@ program  process_NASALaRC_cloud
         write(6,'(I12,5f12.3,f12.4,I12)') im,lat_m(im),lon_m(im),w_pcld(im),&
                 w_tcld(im),w_frac(im),w_lwp(im),nlev_cld(im)
      enddo
-
+!
+     open(15, file='NASALaRC_cloud4fv3.bin',form='unformatted')
+        write(15)  nlon,nlat,nCell
+        write(15)  index
+        write(15)  w_pcld
+        write(15)  w_tcld
+        write(15)  w_frac
+        write(15)  w_lwp
+        write(15)  nlev_cld
+     close(15)
 !
 ! DEBUGGING: Write out interpolated NASA LaRC data to text file
 !

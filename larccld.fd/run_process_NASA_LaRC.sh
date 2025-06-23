@@ -45,7 +45,7 @@ cat << EOF > namelist.nasalarc
 EOF
 
 # Clean old text files
-clean_files=( 'nasa_larc_obs_interp.txt' 'nasa_larc_obs_raw.txt' )
+clean_files=( 'NASALaRC_cloud4fv3.bin' 'nasa_larc_obs_interp.txt' 'nasa_larc_obs_raw.txt' )
 for f in ${clean_files[@]}; do
   if [[ -f ${f} ]]; then
     rm ${f}
