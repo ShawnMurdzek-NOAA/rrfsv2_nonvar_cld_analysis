@@ -24,14 +24,14 @@ ${compiler} -c ${flags} read_NASALaRC_cloud.f90
 ${compiler} -c ${flags} write_bufr_NASALaRC.f90
 if [[ ${machine} == 'ursa' ]]; then
   echo 'success'
-  ${compiler} ${flags} process_NASALaRC_cloud_NEW.f90 -o process_larccld.exe \
+  ${compiler} ${flags} process_NASALaRC_cloud.f90 -o process_larccld.exe \
   	  ./kinds.o ./constants.o ./mpasio.o ./read_NASALaRC_cloud.o ./write_bufr_NASALaRC.o \
   	  ${map_util_dir}/misc_definitions_module.o ${map_util_dir}/module_map_utils.o \
  	  -I${map_util_dir} \
 	  -L${netcdf_fortran_ROOT}/lib -lnetcdff \
 	  -L${bufr_ROOT}/lib64 -lbufr_4
 else
-  ${compiler} ${flags} process_NASALaRC_cloud_NEW.f90 -o process_larccld.exe \
+  ${compiler} ${flags} process_NASALaRC_cloud.f90 -o process_larccld.exe \
   	  ./kinds.o ./constants.o ./mpasio.o ./read_NASALaRC_cloud.o ./write_bufr_NASALaRC.o \
   	  ${map_util_dir}/misc_definitions_module.o ${map_util_dir}/module_map_utils.o \
  	  -I${map_util_dir} \

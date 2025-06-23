@@ -27,11 +27,16 @@ program  process_NASALaRC_cloud
 !
   use mpi
   use kinds, only: r_kind,i_kind,r_single
-  use mpasio, only: read_MPAS_nCell,read_MPAS_lat_lon
+  use module_ncio, only : ncio
+  use pesg, only : gtoxm_ak_dd,xmtog_ak_dd
+  use module_esggrid_util, only: edp,esggrid_util
 
   implicit none
 !
   INCLUDE 'netcdf.inc'
+!
+  type(ncio) :: rrfs
+  type(esggrid_util) :: esggrid
 !
 ! MPI variables
   integer :: npe, mype,ierror
@@ -44,11 +49,9 @@ program  process_NASALaRC_cloud
 !
   character*256 output_file
 !
-! MPAS mesh
-  integer(i_kind) :: nCell
-  REAL(r_single), allocatable :: lat_m(:)
-  REAL(r_single), allocatable :: lon_m(:)
-  CHARACTER*180   meshfile
+!  grid
+  integer(i_kind) :: nlon,nlat
+  CHARACTER*180   geofile
 !
 !  For NASA LaRC 
 !
@@ -82,10 +85,10 @@ program  process_NASALaRC_cloud
 !
   integer  nfov
   parameter (nfov=160)
-  real, allocatable ::     Pxx(:,:),Txx(:,:),WPxx(:,:)
-  real,allocatable  ::     xdist(:,:), xxxdist(:)
+  real, allocatable ::     Pxx(:,:,:),Txx(:,:,:),WPxx(:,:,:)
+  real,allocatable  ::     xdist(:,:,:), xxxdist(:)
   real     fr,sqrt, qc, type
-  integer,allocatable  ::  PHxx(:,:),index(:), jndex(:)
+  integer,allocatable  ::  PHxx(:,:,:),index(:,:), jndex(:)
   integer  ixx,ii,jj,med_pt,igrid,jgrid  &
                ,ncount,ncount1,ncount2,ii1,jj1,nobs,n
 
@@ -95,21 +98,23 @@ program  process_NASALaRC_cloud
   integer            :: analysis_time
   integer            :: ioption
   character(len=100) :: bufrfile
-  integer(i_kind)    :: rad_km, nptsx, nptsy
+  integer(i_kind)    :: npts_rad, nptsx, nptsy
   integer(i_kind)    :: boxhalfx(boxMAX), boxhalfy(boxMAX)
   real (r_kind)      :: boxlat0(boxMAX)
   character(len=20)  :: grid_type
   real (r_kind)      :: userDX
-  namelist/setup/ grid_type,analysis_time, ioption, rad_km,bufrfile, &
+  namelist/setup/ grid_type,analysis_time, ioption, npts_rad,bufrfile, &
                   boxhalfx, boxhalfy, boxlat0,userDX
+   ! for area north of the latitude bigbox_lat0, a large radius npts_rad2 will be used.
+   ! this is to solve the cloud stripe issue in Alaska  -G. Ge Nov. 19, 2019 
 !
 !
 !  ** misc
       
-!  real(edp)     :: rlat,rlon
-!  real(edp)     :: xc,yc
+  real(edp)     :: rlat,rlon
+  real(edp)     :: xc,yc
 
-  integer i,j,k,ipt,jpt,cfov,ibox,imesh
+  integer i,j,k,ipt,jpt,cfov,ibox
   Integer nf_status,nf_fid,nf_vid
 
   integer :: NCID
@@ -120,9 +125,11 @@ program  process_NASALaRC_cloud
   character*10  atime
   logical :: ifexist
 
-! For testing haversine subroutine
-  real, allocatable :: dist(:)
-
+  integer :: nbox  ! SSM 20250530
+  ! Example RRFS grid index to follow
+  integer itest,jtest
+  itest=910
+  jtest=110
 
 !**********************************************************************
 !
@@ -139,7 +146,7 @@ program  process_NASALaRC_cloud
 !
      analysis_time=2018051718
      bufrfile='NASALaRCCloudInGSI_bufr.bufr'
-     rad_km=3
+     npts_rad=1
      boxhalfx=-1
      boxhalfy=-1
      boxlat0= 999.0 !don't use variable box by default
@@ -158,34 +165,32 @@ program  process_NASALaRC_cloud
        write(*,setup)
      else
        write(*,*) 'No namelist file exist, use default values'
-       write(*,*) "analysis_time,bufrfile,rad_km,ioption"
-       write(*,*) analysis_time, trim(bufrfile),rad_km,ioption
+       write(*,*) "analysis_time,bufrfile,npts_rad,ioption"
+       write(*,*) analysis_time, trim(bufrfile),npts_rad,ioption
        write(*,*) "boxhalfx,boxhalfy,boxlat0"
        write(*,*) boxhalfx,boxhalfy,boxlat0
      endif
-
+ 
 !
-! read in MPAS mesh information
+! define esg grid
 !
-
-     meshfile='mesh.nc'
-     call read_MPAS_nCell(meshfile, nCell)
-     write(6,*) 'model nCell   =', nCell
-     allocate(lat_m(nCell))
-     allocate(lon_m(nCell))
-     call read_MPAS_lat_lon(meshfile, nCell, lat_m, lon_m)
-     write(6,*) 'max model lat =', maxval(lat_m)
-     write(6,*) 'min model lat =', minval(lat_m)
-     write(6,*) 'max model lon =', maxval(lon_m)
-     write(6,*) 'min model lon =', minval(lon_m)
-
+     call esggrid%init(grid_type)
+!
+! get domain dimension
+!
+     write(geofile,'(a,a)') './', 'fv3sar_grid_spec.nc'
+     call rrfs%open(trim(geofile),"r",200)
+     call rrfs%get_dim("grid_xt",nlon)
+     call rrfs%get_dim("grid_yt",nlat)
+     write(*,*) 'nx_rrfs,ny_rrfs=',nlon,nlat
+     call rrfs%close()
 !
 !  read in the NASA LaRC cloud data
 !
      satfile='lgycld.bufr_d'
      call read_NASALaRC_cloud_bufr_survey(satfile,satidgoeseast,satidgoeswest,east_time, west_time,maxobs)
      if(maxobs==0) then
-        write(*,*) "WARNING: no observation available"
+        write(*,*) "WARNING: no observaion available"
         stop 0
      endif
      allocate(lat_l(maxobs))
@@ -203,8 +208,6 @@ program  process_NASALaRC_cloud
      call read_NASALaRC_cloud_bufr(satfile,atime,satidgoeseast,satidgoeswest,east_time, west_time,   &   
             maxobs,numobs, ptop_l, teff_l, phase_l, lwp_l,lat_l, lon_l)
 
-     write(6,*)
-     write(6,*) 'number of obs = ', numobs
      write(6,'(6a12)')'ptop', 'teff', 'lat', 'lon', 'lwp', 'phase'
      do j=1,numobs,numobs/50
         write(6,'(4f12.3,f12.4,I12)') ptop_l(j),teff_l(j),lat_l(j),lon_l(j),lwp_l(j),phase_l(j)
@@ -215,62 +218,194 @@ program  process_NASALaRC_cloud
         if (phase_l(i).eq.5) phase_l(i) = -9  ! bad data
         if (phase_l(i).eq.0) ptop_l(i) = -20.
      enddo
-
 ! -----------------------------------------------------------
 ! -----------------------------------------------------------
-!     Map each FOV onto model mesh
+!     Map each FOV onto ESG grid points 
 ! -----------------------------------------------------------
 ! -----------------------------------------------------------
 !
-     allocate (Pxx(nCell,nfov),Txx(nCell,nfov),WPxx(nCell,nfov))
-     allocate (xdist(nCell,nfov), xxxdist(nfov))
-     allocate (PHxx(nCell,nfov),index(nCell), jndex(nfov))
-     allocate (dist(nCell))
+     allocate (Pxx(nlon,nlat,nfov),Txx(nlon,nlat,nfov),WPxx(nlon,nlat,nfov))
+     allocate (xdist(nlon,nlat,nfov), xxxdist(nfov))
+     allocate (PHxx(nlon,nlat,nfov),index(nlon,nlat), jndex(nfov))
      index=0
 
+     write(6,*) "boxlat0 =", boxlat0  ! SSM 20250530
+     write(6,*) "boxMAX =", boxMAX    ! SSM 20250530
+     nbox=0  ! SSM 20250530
+
      do ipt=1,numobs
-       if ( mod(ipt, 10).eq.0 ) then
-         write(6,*) 'In ipt loop, ipt =', ipt
-       endif
        if (phase_l(ipt).ge.0) then
 !  Indicates there is some data (not missing)
 
-! Compute distances between ob and all mesh cells
-         call compute_haversine_dist(nCell, lat_l(ipt), lon_l(ipt), lat_m, lon_m, dist)
+!  to determine npts
+         nptsx=npts_rad !by default
+         nptsy=npts_rad !by default
+         if (lat_l(ipt) > boxlat0(1) ) then
+           do ibox=1,boxMAX !to get the largest possible npts
+             if (lat_l(ipt) > boxlat0(ibox)) then
+               if (boxhalfx(ibox)>0) nptsx=boxhalfx(ibox)
+               if (boxhalfy(ibox)>0) nptsy=boxhalfy(ibox)
+             endif
+           enddo
+         endif
 
-         if ( minval(dist).le.rad_km ) then
-! We have at least one cell within rad_km of the ob
-           do imesh=1,nCell
-             if ( dist(imesh).le.rad_km ) then
-               if (index(imesh).lt.nfov) then
-                 index(imesh) = index(imesh) + 1
-                 Pxx(imesh,index(imesh))   = Ptop_l(ipt)
-                 Txx(imesh,index(imesh))   = Teff_l(ipt)
-                 PHxx(imesh,index(imesh))  = phase_l(ipt)
-                 WPxx(imesh,index(imesh))  = lwp_l(ipt)
-                 xdist(imesh,index(imesh)) = dist(nCell)
-               else
-                 write(6,*) 'ALERT: too many data in one grid, increase nfov'
-                 write(6,*) nfov, imesh
-               endif
-             endif ! mesh cell is within rad_km of ob
-           enddo ! imesh
-         endif ! at least one mesh cell within rad_km
+         ! SSM 202505030
+         if (nptsx .ne. npts_rad) then
+           nbox = nbox + 1
+         endif
 
+! * Compute RR grid x/y at lat/lon of cloud data
+         rlon=lon_l(ipt)
+         rlat=lat_l(ipt)
+         call esggrid%lltoxy(rlon,rlat,xc,yc)
+
+         ii1 = int(xc+0.5)
+         jj1 = int(yc+0.5)
+         if ( (jj1-1.ge.1 .and. jj1+1.le.nlat) .and.  &
+              (ii1-1.ge.1 .and. ii1+1.le.nlon) )    then
+            do jj = max(1,jj1-nptsy), min(nlat,jj1+nptsy)
+               do ii = max(1,ii1-nptsx), min(nlon,ii1+nptsx)
+! * We check multiple data within gridbox
+                  if (index(ii,jj).lt.nfov) then
+                      index(ii,jj) = index(ii,jj) + 1
+
+                     Pxx(ii,jj,index(ii,jj))   = Ptop_l(ipt)
+                     Txx(ii,jj,index(ii,jj))   = Teff_l(ipt)
+                     PHxx(ii,jj,index(ii,jj))  = phase_l(ipt)
+                     WPxx(ii,jj,index(ii,jj))  = lwp_l(ipt)
+                     xdist(ii,jj,index(ii,jj)) =       &
+                         sqrt( (XC+1-ii)**2 + (YC+1-jj)**2 )
+                  else
+                     write(6,*) 'ALERT: too many data in one grid, increase nfov'
+                     write(6,*) nfov, ii,jj
+                  endif
+               enddo ! ii
+            enddo  ! jj
+         endif ! obs is inside the analysis domain
+!
        endif   ! phase_l >= 0
      enddo   ! ipt
 
      deallocate(lat_l,lon_l,ptop_l,teff_l,phase_l,lwp_l)
      write(6,*) 'The max index number is: ', maxval(index)
+     
+     ! SSM 20250530
+     write(6,*) "nbox =", nbox
+     write(6,*)
+     write(6,*) "Sample point"
+     write(6,*) "index =", index(itest,jtest)
+     write(6,*) "Pxx =", Pxx(itest,jtest,:)
+     write(6,*) "xdist =", xdist(itest,jtest,:)
+     write(6,*)
 
-!=========================================================================
-! There should be additional code here that has not been added yet. See 
-! process_NASALaRC_cloud.f90
 !
-! Development on this approach stopped b/c it is WAY too slow
+!  Now, map the observations to FV3LAM native grid
 !
-!=========================================================================
+     allocate(w_pcld(nlon,nlat))
+     allocate(w_tcld(nlon,nlat))
+     allocate(w_frac(nlon,nlat))
+     allocate(w_lwp(nlon,nlat))
+     allocate(nlev_cld(nlon,nlat))
+     w_pcld=99999.
+     w_tcld=99999.
+     w_frac=99999.
+     w_lwp=99999.
+     nlev_cld = 99999
 
+     do jj = 1,nlat
+     do ii = 1,nlon
+       if ((index(ii,jj) >= 1 .and. index(ii,jj) < 3) .and. userDX < 7000.0) then
+          w_pcld(ii,jj) = Pxx(ii,jj,1) ! hPa
+          w_tcld(ii,jj) = Txx(ii,jj,1) ! K
+          w_lwp(ii,jj) = WPxx(ii,jj,1) ! g/m^2
+          w_frac(ii,jj) = 1
+          nlev_cld(ii,jj) = 1
+          if (w_pcld(ii,jj).eq.-20) then
+               w_pcld(ii,jj) = 1013. ! hPa - no cloud
+               w_frac(ii,jj)=0.0
+               nlev_cld(ii,jj) = 0
+          end if
+       elseif(index(ii,jj) .ge. 3) then
+
+! * We decided to use nearest neighborhood for ECA values,
+! *     a kind of convective signal from GOES platform...
+!
+! * Sort to find closest distance if more than one sample
+          if(ioption == 1) then    !nearest neighborhood
+            do i=1,index(ii,jj)
+              jndex(i) = i
+              xxxdist(i) = xdist(ii,jj,i)
+            enddo
+            call sortmed(xxxdist,index(ii,jj),jndex,fr)
+            w_pcld(ii,jj) = Pxx(ii,jj,jndex(1))
+            w_tcld(ii,jj) = Txx(ii,jj,jndex(1))
+            w_lwp(ii,jj) = WPxx(ii,jj,jndex(1))
+          endif
+! * Sort to find median value 
+          if(ioption .eq. 2) then    !pick median 
+            do i=1,index(ii,jj)
+              jndex(i) = i
+              xxxdist(i) = Pxx(ii,jj,i)
+            enddo
+            call sortmed(xxxdist,index(ii,jj),jndex,fr)
+            med_pt = index(ii,jj)/2  + 1
+            w_pcld(ii,jj) = Pxx(ii,jj,jndex(med_pt)) ! hPa
+            w_tcld(ii,jj) = Txx(ii,jj,jndex(med_pt)) ! K
+            w_lwp(ii,jj) = WPxx(ii,jj,jndex(med_pt)) !  g/m^2
+          endif   ! pick median
+!
+! missing pcld
+          if (w_pcld(ii,jj).eq.-20) then
+             w_pcld(ii,jj) = 1013. ! hPa - no cloud
+             w_frac(ii,jj)=0.0
+             nlev_cld(ii,jj) = 0
+! cloud fraction based on phase (0 are clear), what about -9 ????
+          elseif( w_pcld(ii,jj) < 1012.99) then
+             cfov = 0
+             do i=1,index(ii,jj)
+               if(PHxx(ii,jj,i) .gt. 0.1) cfov = cfov + 1
+             enddo
+             w_frac(ii,jj) = float(cfov)/(max(1,index(ii,jj)))     !  fraction
+             if( w_frac(ii,jj) > 0.01 ) nlev_cld(ii,jj) = 1
+          endif
+       endif   ! index > 3
+     enddo  !ii
+     enddo  !jj
+
+     deallocate (Pxx,Txx,WPxx)
+     deallocate (xdist, xxxdist)
+     deallocate (PHxx, jndex)
+!
+!  write results
+!
+     ii=nlon/2
+     write(6,'(6a12)') 'index', 'w_pcld', 'w_tcld', 'w_frac', 'w_lwp ', 'nlev_cld'
+     do j=1,nlat,nlat/20
+        write(6,'(I12,3f12.3,f12.4,I12)') index(ii,j),w_pcld(ii,j),&
+                w_tcld(ii,j),w_frac(ii,j),w_lwp(ii,j),nlev_cld(ii,j)
+     enddo
+!
+     open(15, file='NASALaRC_cloud4fv3.bin',form='unformatted')
+        write(15)  nlon,nlat
+        write(15)  index
+        write(15)  w_pcld
+        write(15)  w_tcld
+        write(15)  w_frac
+        write(15)  w_lwp
+        write(15)  nlev_cld
+     close(15)
+!
+!  write out results
+!
+     call write_bufr_NASALaRC(bufrfile,analysis_time,nlon,nlat,userDX,index,w_pcld,w_tcld,w_frac,w_lwp,nlev_cld)
+!
+     deallocate(w_pcld)
+     deallocate(w_tcld)
+     deallocate(w_frac)
+     deallocate(w_lwp)
+     deallocate(nlev_cld)
+     deallocate(index)
+!
      write(6,*) "=== RAPHRRR PREPROCCESS SUCCESS ==="
   endif ! if mype==0 
 
@@ -598,38 +733,3 @@ subroutine read_NASALaRC_cloud_bufr_survey(satfile,satidgoeseast,satidgoeswest,e
 
 end subroutine read_NASALaRC_cloud_bufr_survey
 
-subroutine compute_haversine_dist(n, latpt, lonpt, lat, lon, dist)
-!
-! Compute the distance between two (lat, lon) coordinates in m using the haversine distance formula
-!
-! https://scikit-learn.org/stable/modules/generated/sklearn.metrics.pairwise.haversine_distances.html
-!
-! Cross-check using this web tool: https://www.nhc.noaa.gov/gccalc.shtml
-
-  implicit none
-
-  integer, intent(in) :: n
-  real, intent(in) :: latpt, lonpt
-  real, intent(in) :: lat(n), lon(n)  
-  real, intent(out) :: dist(n)
-
-  real :: latptr, lonptr
-  real :: latr(n), lonr(n), dlat(n), dlon(n), asin_arg(n)
-  real :: deg2rad, rearth
-
-  ! Define constants
-  deg2rad = acos(-1.) / 180.
-  rearth = 6371200.
-
-  ! Convert inputs to radians
-  latptr = latpt * deg2rad
-  lonptr = lonpt * deg2rad
-  latr = lat * deg2rad
-  lonr = lon * deg2rad
-  dlat = latr - latptr
-  dlon = lonr - lonptr
-
-  asin_arg = sin(dlat/2.)**2 + cos(latptr) * cos(latr) * sin(dlon/2.)**2
-  dist = rearth * 2 * asin(sqrt(asin_arg))
-
-end subroutine compute_haversine_dist
