@@ -23,7 +23,6 @@ ${compiler} -c ${flags} mpasio.f90 -I ${netcdf_fortran_ROOT}/include
 ${compiler} -c ${flags} read_NASALaRC_cloud.f90
 ${compiler} -c ${flags} write_bufr_NASALaRC.f90
 if [[ ${machine} == 'ursa' ]]; then
-  echo 'success'
   ${compiler} ${flags} process_NASALaRC_cloud.f90 -o process_larccld.exe \
   	  ./kinds.o ./constants.o ./mpasio.o ./read_NASALaRC_cloud.o ./write_bufr_NASALaRC.o \
   	  ${map_util_dir}/misc_definitions_module.o ${map_util_dir}/module_map_utils.o \
