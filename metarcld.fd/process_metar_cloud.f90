@@ -57,17 +57,25 @@ program  process_metar_cloud
 !
   integer :: analysis_time
   integer :: analysis_minute
+  integer :: debug
   character(len=100) :: prepbufrfile
   real(r_kind)       :: twindin
   namelist/setup/ analysis_time,analysis_minute,prepbufrfile,twindin,&
                   metar_impact_radius,l_metar_impact_radius_change, &
                   metar_impact_radius_max,metar_impact_radius_min, &
-                  metar_impact_radius_max_height,metar_impact_radius_min_height
+                  metar_impact_radius_max_height,metar_impact_radius_min_height,&
+                  debug
 !
 !  ** misc
       
   logical :: ifexist
   integer :: lunout
+
+! For debugging
+  integer :: i,icell
+  real(r_kind) :: sta_lon,rstation_id
+  character(8) :: c_station_id
+  equivalence(rstation_id,c_station_id)
 
 !**********************************************************************
 !
@@ -88,6 +96,7 @@ program  process_metar_cloud
      prepbufrfile='prepbufr'
      analysis_minute=0
      twindin=0.5
+     debug=1
  
      inquire(file='namelist.metarcld', EXIST=ifexist )
      if(ifexist) then
@@ -126,6 +135,25 @@ program  process_metar_cloud
         write(lunout) cdata_regular
      close(lunout)
 !
+! DEBUGGING: Write out processed METAR obs to text file
+!
+     if (debug > 0) then
+       open(13, file="processed_metar_obs_mpas.txt", status="new", action="write")
+       write(13,'(13a12)') 'icell', 'MPAS lat', 'MAPS lon', 'sta lat', 'sta lon', 'min dist', 'ID', &
+              'cover1', 'cover2', 'cover3', 'base1', 'base2', 'base3' 
+       do i=1,ndata
+          icell = cdata_regular(24,i)
+          sta_lon = cdata_regular(26,i) - 360.
+          rstation_id = cdata_regular(1,i)
+          write(13,'(I12,5f12.3,a12,6f12.3)') icell, lat_m(icell), lon_m(icell), &
+                 cdata_regular(27,i), sta_lon, cdata_regular(23,i), trim(c_station_id), &
+                 cdata_regular(6,i), cdata_regular(7,i), cdata_regular(8,i), &
+                 cdata_regular(12,i), cdata_regular(13,i), cdata_regular(14,i)
+                  
+       enddo
+       close(13)
+     endif
+
      deallocate(cdata_regular)
 !
      write(6,*) "=== RAPHRRR PREPROCCESS SUCCESS ==="

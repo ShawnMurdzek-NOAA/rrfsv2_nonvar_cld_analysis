@@ -45,7 +45,7 @@ cat << EOF > namelist.metarcld
 EOF
 
 # Clean old text files
-clean_files=( 'mpas_metarcloud.bin' )
+clean_files=( 'mpas_metarcloud.bin' 'processed_metar_obs_mpas.txt' )
 for f in ${clean_files[@]}; do
   if [[ -f ${f} ]]; then
     rm ${f}

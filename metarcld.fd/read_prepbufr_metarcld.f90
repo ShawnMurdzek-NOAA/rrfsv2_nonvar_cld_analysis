@@ -63,7 +63,8 @@ subroutine read_prepbufr_metarcld(infile,analysis_time,analysis_minute,&
 
   integer(i_kind) :: nread,ntb
 
-  real(r_double) rstation_id,qcmark_huge
+  real(r_kind) rstation_id
+  real(r_double) qcmark_huge
   real(r_double),dimension(8):: hdr,hdrtsb
   real(r_double),dimension(13,255):: obsdat
   real(r_double),dimension(8,255):: qcmark 
