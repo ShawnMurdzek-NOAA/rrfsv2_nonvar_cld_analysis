@@ -1,4 +1,5 @@
-subroutine reorg_metar_cloud_regular(cdata,nreal,ndata,nlon,nlat,cdata_all,maxobs,ngrid)
+subroutine reorg_metar_cloud_regular(cdata,nreal,ndata,nlat,nlon,nCell,lat_m,lon_m,&
+                                     x_mp_m,y_mp_m,cdata_all,maxobs,ngrid)
 !$$$  subprogram documentation block
 !                .      .    .                                       .
 ! subprogram:  reorg_metar_cloud     define a closest METAR cloud observation for each grid point
@@ -15,7 +16,7 @@ subroutine reorg_metar_cloud_regular(cdata,nreal,ndata,nlon,nlat,cdata_all,maxob
 !    2016-06-21  S.Liu give number precision
 !
 !  input argument list:
-!     cdata     - METRA cloud observation
+!     cdata     - METAR cloud observation
 !     nreal     - first dimension of cdata
 !     ndata     - second dimension of cdata
 !     maxobs    - maximum number of cdata_all
@@ -58,7 +59,8 @@ subroutine reorg_metar_cloud_regular(cdata,nreal,ndata,nlon,nlat,cdata_all,maxob
   integer(i_kind)                       ,intent(in) :: nreal   
   integer(i_kind)                       ,intent(in) :: ndata
   integer(i_kind)                       ,intent(in) :: maxobs
-  integer(i_kind)                       ,intent(in):: nlon,nlat
+  integer(i_kind)                       ,intent(in) :: nlat,nlon,nCell
+  real,dimension(nCell)                 ,intent(in) :: lat_m,lon_m,x_mp_m,y_mp_m
   real(r_kind),dimension(nreal,ndata)   ,intent(inout) :: cdata
   real(r_kind),dimension(nreal,maxobs)  ,intent(out):: cdata_all
   integer(i_kind)                       ,intent(out):: ngrid
@@ -66,11 +68,12 @@ subroutine reorg_metar_cloud_regular(cdata,nreal,ndata,nlon,nlat,cdata_all,maxob
 ! local variable
 !
   integer(i_kind) :: ista_prev,ista_prev2,ista_save
+  integer(i_kind) :: icell_prev,icell_prev2,icell_save
 
   real(r_kind),dimension(nreal)   :: cdata_temp
   real(r_kind),dimension(12)     :: cloudlevel_temp
-  INTEGER(i_kind),allocatable :: first_sta(:,:)
-  INTEGER(i_kind),allocatable :: next_sta(:)
+  INTEGER(i_kind),allocatable :: first_sta(:,:),first_cell(:,:)
+  INTEGER(i_kind),allocatable :: next_sta(:),next_cell(:)
   INTEGER(i_kind) ::    null_p
   PARAMETER ( null_p     = -1       )
 
@@ -80,7 +83,7 @@ subroutine reorg_metar_cloud_regular(cdata,nreal,ndata,nlon,nlat,cdata_all,maxob
 
   integer(i_kind) :: isprd,isprd2,iout
   integer(i_kind) ::  aninc_cld_p
-  integer(i_kind) :: i,j,k,i1,j1,ic,ista
+  integer(i_kind) :: i,j,k,i1,j1,ic,ista,icell
   integer(i_kind) ::  ista_min
   real(r_kind) ::  min_dist, dist
   real(r_kind) ::  awx, cg_dewpdep, cldamt,cldhgt,cl_base_ista
@@ -200,7 +203,7 @@ subroutine reorg_metar_cloud_regular(cdata,nreal,ndata,nlon,nlat,cdata_all,maxob
 
 !
 !
-!  find the nearest METAR station for each grid point
+!  find the nearest METAR station for each grid point in map projection
 !
   allocate(first_sta(nlon,nlat))
   allocate(next_sta(ndata))
@@ -209,11 +212,17 @@ subroutine reorg_metar_cloud_regular(cdata,nreal,ndata,nlon,nlat,cdata_all,maxob
   next_sta = null_p
   sta_cld  = 0
 
+  allocate(first_cell(nlon,nlat))
+  allocate(next_cell(nCell))
+  first_cell= null_p
+  next_cell = null_p
+
 ! -- Then fill arrays based on where obs are
 ! -- NEXT_STA  - pointer to next ob found in grid volume
 !         from the previous ob in that volume
 !-----------------------------------------------------------
   do ista = 1,ndata
+     
      if (cdata(22,ista) < 50) then
        if (cdata(6,ista) >= -one .and. cdata(6,ista) < 100.0_r_kind) then
 ! when cloud data are available 
@@ -234,6 +243,25 @@ subroutine reorg_metar_cloud_regular(cdata,nreal,ndata,nlon,nlat,cdata_all,maxob
           end if
        endif
      endif
+  enddo
+
+! Determine closest map projection grid point to each MPAS cell
+  do icell = 1,nCell
+
+     i = int(x_mp_m(icell))
+     j = int(y_mp_m(icell))
+
+     if (first_cell(i,j) == null_p) then
+        first_cell(i,j) = icell
+     else
+        icell_prev = first_cell(i,j)
+        do while (icell_prev /= null_p )
+           icell_prev2= next_cell(icell_prev)
+           icell_save = icell_prev
+           icell_prev = icell_prev2
+        enddo
+        next_cell(icell_save) = icell
+     end if
   enddo
 
    iout=0
@@ -259,83 +287,89 @@ subroutine reorg_metar_cloud_regular(cdata,nreal,ndata,nlon,nlat,cdata_all,maxob
 
 !
 !sb - This is the big grid pt loop.  Walk thru each
-!            individual grid points within 10x10 box.
+!            individual MPAS cell within 10x10 box.
        if(nsta_cld > 0 ) then
          do j1 = j,min(nlat,j+aninc_cld_p - 1)
            do i1 = i,min(nlon,i+aninc_cld_p - 1)
 
-!sb - Find closest cloud station to grid point
-             min_dist = 1.e10_r_kind
-             do ic= 1,nsta_cld
-                ista = sta_cld(ic)
-                dist = (float(i1)-cdata(2,ista))*(float(i1)-cdata(2,ista))  &
-                      +(float(j1)-cdata(3,ista))*(float(j1)-cdata(3,ista))
-                if (dist < min_dist .and. dist < float(isprd2)) then
-                    min_dist = dist
-                    ista_min = ista
-                end if
-             end do  ! ic find the closest cloud station
+! Loop over each MPAS cell that is close to (i1, j1)
+             icell_prev = first_cell(i1,j1)
+             do while (icell_prev /= null_p)
 
-             if (min_dist < 1.e9_r_kind) then
-                if (i1 > 1 .and. i1  < nlon .and. j1 > 1 .and. j1 < nlat) then
-                   min_dist=sqrt(min_dist) 
-                   do k=1,nreal
-                      cdata_temp(k)=cdata(k,ista_min)
-                   enddo
-                   if(l_metar_impact_radius_change) then
-                      dxij=region_dx
+!sb - Find closest cloud station to grid point
+               min_dist = 1.e10_r_kind
+               do ic= 1,nsta_cld
+                  ista = sta_cld(ic)
+                  dist = (x_mp_m(icell_prev)-cdata(2,ista))*(x_mp_m(icell_prev)-cdata(2,ista))  &
+                        +(y_mp_m(icell_prev)-cdata(3,ista))*(y_mp_m(icell_prev)-cdata(3,ista))
+                  if (dist < min_dist .and. dist < float(isprd2)) then
+                      min_dist = dist
+                      ista_min = ista
+                  end if
+               end do  ! ic find the closest cloud station
+
+               if (min_dist < 1.e9_r_kind) then
+                  if (i1 > 1 .and. i1  < nlon .and. j1 > 1 .and. j1 < nlat) then
+                     min_dist=sqrt(min_dist) 
+                     do k=1,nreal
+                        cdata_temp(k)=cdata(k,ista_min)
+                     enddo
+                     if(l_metar_impact_radius_change) then
+                        dxij=region_dx
 
 !                      write(*,*) 'min_dist,dxij=',min_dist,dxij
 ! cloud amount
 !                      write(*,'(10f10.1)') (cdata_temp(5+k),k=1,6)
 ! cloud bottom height (m)
 !                      write(*,'(10f10.1)') (cdata_temp(11+k),k=1,6) 
-                      cloudlevel_temp=-99999.0_r_kind
-                      ic=0
-                      do k=1,6
-                         if(cdata_temp(5+k) > zero .and. cdata_temp(11+k) > zero ) then 
-                            radiusij=metar_impact_radius_min + delat_radius* &
-                                     max(min((cdata_temp(11+k)-metar_impact_radius_min_height)/delta_height,one),zero)
-                            isprdij=int(radiusij/dxij+half)
-!                            write(*,*) 'radiusij, isprdij=',radiusij,isprdij
-                            if(min_dist <= isprdij) then
-                                ic=ic+1
-                                cloudlevel_temp(0+ic)=cdata_temp(5+k)
-                                cloudlevel_temp(6+ic)=cdata_temp(11+k)
-                            endif
-                         endif
-                      enddo
-                      if(ic==0) then
-                         if(abs(cdata_temp(6)) < 0.0001_r_kind) ic=1  ! clear
-                      else
-                         do k=1,6
-                            cdata_temp(5+k)=cloudlevel_temp(0+k)
-                            cdata_temp(11+k)=cloudlevel_temp(6+k)
-                         enddo
-!                      write(*,'(10f10.1)') (cdata_temp(5+k),k=1,6)
-!                      write(*,'(10f10.1)') (cdata_temp(11+k),k=1,6) 
-                      endif
-                   else
-                      ic=1
-                   endif
+                        cloudlevel_temp=-99999.0_r_kind
+                        ic=0
+                        do k=1,6
+                           if(cdata_temp(5+k) > zero .and. cdata_temp(11+k) > zero ) then 
+                              radiusij=metar_impact_radius_min + delat_radius* &
+                                       max(min((cdata_temp(11+k)-metar_impact_radius_min_height)/delta_height,one),zero)
+                              isprdij=int(radiusij/dxij+half)
+!                              write(*,*) 'radiusij, isprdij=',radiusij,isprdij
+                              if(min_dist <= isprdij) then
+                                  ic=ic+1
+                                  cloudlevel_temp(0+ic)=cdata_temp(5+k)
+                                  cloudlevel_temp(6+ic)=cdata_temp(11+k)
+                              endif
+                           endif
+                        enddo
+                        if(ic==0) then
+                           if(abs(cdata_temp(6)) < 0.0001_r_kind) ic=1  ! clear
+                        else
+                           do k=1,6
+                              cdata_temp(5+k)=cloudlevel_temp(0+k)
+                              cdata_temp(11+k)=cloudlevel_temp(6+k)
+                           enddo
+!                        write(*,'(10f10.1)') (cdata_temp(5+k),k=1,6)
+!                        write(*,'(10f10.1)') (cdata_temp(11+k),k=1,6) 
+                        endif
+                     else
+                        ic=1
+                     endif
 
-                   if(ic > 0)  then
-                      iout = iout + 1
-                      if(iout > maxobs) then
-                         write(6,*)'reorg_metar_cloud:  ***Error*** ndata > maxobs '
-                         call stop2(50)
-                      end if
-                      do k=1,nreal
-                         cdata_all(k,iout) = cdata(k,ista_min)
-                      enddo
-                      cdata_all(24,iout) = cdata_all(2,iout)   ! save observaion station i
-                      cdata_all(25,iout) = cdata_all(3,iout)   ! save observaion station j
-                      cdata_all(2,iout) = float(i1)        ! grid index i
-                      cdata_all(3,iout) = float(j1)        ! grid index j
-                      cdata_all(23,iout)= min_dist ! distance from station
-                   endif
-                endif
-             endif
+                     if(ic > 0)  then
+                        iout = iout + 1
+                        if(iout > maxobs) then
+                           write(6,*)'reorg_metar_cloud:  ***Error*** ndata > maxobs '
+                           !call stop2(50)
+                           stop 50
+                        end if
+                        do k=1,nreal
+                           cdata_all(k,iout) = cdata(k,ista_min)
+                        enddo
+                        cdata_all(23,iout)= min_dist ! distance from station
+                        cdata_all(24,iout)= icell_prev ! MPAS cell index
+                     endif
+                  endif
+               endif
+
+               icell_prev2 = next_cell(icell_prev)
+               icell_prev = icell_prev2
+             enddo ! icell_prev
            enddo   ! j1
          enddo   ! i1
        endif ! nsta_cld > 0
@@ -347,5 +381,7 @@ subroutine reorg_metar_cloud_regular(cdata,nreal,ndata,nlon,nlat,cdata_all,maxob
    deallocate(first_sta)
    deallocate(sta_cld)
    deallocate(next_sta)
+   deallocate(first_cell)
+   deallocate(next_cell)
 
 end subroutine reorg_metar_cloud_regular

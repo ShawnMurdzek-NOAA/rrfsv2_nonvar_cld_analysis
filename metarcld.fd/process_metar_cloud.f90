@@ -27,7 +27,7 @@ program  process_metar_cloud
 !
   use mpi
   use kinds, only: r_kind,i_kind,r_single
-  use module_ncio, only : ncio
+  use mpasio, only: read_MPAS_nCell,read_MPAS_lat_lon
 
   use cld_parm_array_mod, only: region_dy,region_dx
   use cld_parm_array_mod, only: metar_impact_radius
@@ -46,20 +46,11 @@ program  process_metar_cloud
 ! MPI variables
   integer :: npe, mype,ierror
 !
-  type(ncio) :: rrfs
+! MPAS mesh
+  integer(i_kind) :: nCell
+  real, allocatable :: lat_m(:),lon_m(:)
+  CHARACTER*180   meshfile
 !
-!  grid
-  integer(i_kind) :: nlon,nlat
-!
-  real(r_kind),allocatable,dimension(:,:):: cdata_fv3
-  integer,allocatable,dimension(:,:):: index_regular
-!
-
-  CHARACTER*180   geofile
-!
-!  For NASA LaRC 
-!
-  CHARACTER*180   workPath
 !     ****VARIABLES FOR THIS NETCDF FILE****
 !
 ! namelist
@@ -68,17 +59,13 @@ program  process_metar_cloud
   integer :: analysis_minute
   character(len=100) :: prepbufrfile
   real(r_kind)       :: twindin
-  character(len=20) :: grid_type
-  namelist/setup/ grid_type,analysis_time,analysis_minute,prepbufrfile,twindin,&
+  namelist/setup/ analysis_time,analysis_minute,prepbufrfile,twindin,&
                   metar_impact_radius,l_metar_impact_radius_change, &
                   metar_impact_radius_max,metar_impact_radius_min, &
                   metar_impact_radius_max_height,metar_impact_radius_min_height
 !
 !  ** misc
       
-  integer i,j,ii,jj,ij
-
-  integer :: NCID
   logical :: ifexist
   integer :: lunout
 
@@ -101,7 +88,6 @@ program  process_metar_cloud
      prepbufrfile='prepbufr'
      analysis_minute=0
      twindin=0.5
-     grid_type="none"
  
      inquire(file='namelist.metarcld', EXIST=ifexist )
      if(ifexist) then
@@ -115,20 +101,27 @@ program  process_metar_cloud
        write(*,*) analysis_time
      endif
 !
-! set geogrid fle name
+! read MPAS mesh information
 !
-     write(geofile,'(a,a)') './', 'fv3sar_grid_spec.nc'
-     call rrfs%open(trim(geofile),"r",200)
-     call rrfs%get_dim("grid_xt",nlon)
-     call rrfs%get_dim("grid_yt",nlat)
-     write(*,*) 'nx_rrfs,ny_rrfs=',nlon,nlat
+     meshfile='mesh.nc'
+     call read_MPAS_nCell(meshfile, nCell)
+     write(6,*)
+     write(6,*) 'model nCell   =', nCell
+     allocate(lat_m(nCell))
+     allocate(lon_m(nCell))
+     call read_MPAS_lat_lon(meshfile, nCell, lat_m, lon_m)
+     write(6,*) 'min model lat =', minval(lat_m)
+     write(6,*) 'min model lon =', minval(lon_m)
+     write(6,*) 'max model lat =', maxval(lat_m)
+     write(6,*) 'max model lon =', maxval(lon_m)
+     write(6,*)
 !
      call read_prepbufr_metarcld(prepbufrfile,analysis_time,analysis_minute,&
-                                 twindin,nlon,nlat,grid_type)
+                                 twindin,nCell,lat_m,lon_m)
 
-     write(*,*) 'number of cloud on fv3 grid=',ndata
+     write(*,*) 'number of cloud on MPAS mesh=',ndata
      write(*,*) obstype,nreal,nchanl,ilat,ilon,sis
-     open(lunout,file='fv3_metarcloud.bin',form='unformatted')
+     open(lunout,file='mpas_metarcloud.bin',form='unformatted')
         write(lunout) obstype,sis,nreal,nchanl,ilat,ilon,ndata
         write(lunout) cdata_regular
      close(lunout)

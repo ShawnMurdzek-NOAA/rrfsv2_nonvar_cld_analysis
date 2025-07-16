@@ -9,10 +9,12 @@
 *.bufr_d
 *.bufrtable
 *.bin
+prepbufr
 !fix/*.bufrtable
 
 # Namelists generated on-the-fly
 larccld.fd/namelist.nasalarc
+metarcld.fd/namelist.metarcld
 
 # Other
 *.swp

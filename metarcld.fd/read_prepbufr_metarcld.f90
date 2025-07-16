@@ -1,5 +1,5 @@
 subroutine read_prepbufr_metarcld(infile,analysis_time,analysis_minute,&
-                                  twindin,nlon,nlat,grid_type)
+                                  twindin,nCell,lat_m,lon_m)
 !$$$  subprogram documentation block
 !                .      .    .                                       .
 ! subprogram:  read_prepbuf_emtarcld        read metar cld obs from prepbufr file
@@ -23,19 +23,20 @@ subroutine read_prepbufr_metarcld(infile,analysis_time,analysis_minute,&
   use kinds, only: r_single,r_kind,i_kind,r_double
   use cld_parm_array_mod, only : obstype, sis, nchanl,nreal,ilat,ilon,ndata
   use cld_parm_array_mod, only : cdata_regular
-  use module_esggrid_util, only: edp,esggrid_util
+
+! Modules from WPS
+  use map_utils
+  use misc_definitions_module
 
   implicit none
-
-  type(esggrid_util) :: esggrid
 
 ! Declare passed variables
   character(len=*)                      ,intent(in   ) :: infile
   real(r_kind)                          ,intent(in   ) :: twindin
   integer                               ,intent(in   ) :: analysis_time
   integer                               ,intent(in   ) :: analysis_minute
-  integer                               ,intent(in   ) :: nlon,nlat
-  character(len=*)                      ,intent(in   ) :: grid_type
+  integer                               ,intent(in   ) :: nCell
+  real                                  ,intent(in   ),dimension(nCell) :: lat_m,lon_m
 
 ! Declare local parameters
   real(r_kind),parameter :: bmiss= 10.e10_r_kind
@@ -101,9 +102,19 @@ subroutine read_prepbufr_metarcld(infile,analysis_time,analysis_minute,&
   real(r_kind) timeobs
   real(r_kind) usage
   real(r_kind) deg2rad
-  real(edp)    :: rlon,rlat,xc,yc
+  real            :: rlon,rlat,xc,yc
   integer(i_kind) :: ivalid
   integer(i_kind) :: minobs, minan
+
+! Map projection
+  type(proj_info) :: proj
+  integer :: nlat, nlon
+  real :: lat1, lon1, truelat1, truelat2, stdlon, dx, knowni, knownj
+  real :: ll_lat, ur_lat, left_lat, bot_lat, right_lat, top_lat
+  real :: ll_lon, ur_lon, left_lon, bot_lon, right_lon, top_lon
+
+! MPAS coordinates in map projection space
+  real,dimension(nCell) :: x_mp_m, y_mp_m
 
 ! Initialize variables
 
@@ -117,6 +128,54 @@ subroutine read_prepbufr_metarcld(infile,analysis_time,analysis_minute,&
 
 !------------------------------------------------------------------------
 
+! define map projection (similar to Lambert Conformal from HRRR)
+
+  lat1 = 38.5
+  lon1 = -97.5
+  truelat1 = 38.5
+  truelat2 = 38.5
+  stdlon = -97.5
+  dx = 3000.
+! HRRR grid
+!  nlat = 1060
+!  nlon = 1800
+! Slightly larger grid for MPAS
+  nlat = 1200
+  nlon = 2000
+  knowni = 0.5 * nlon - 1.
+  knownj = 0.5 * nlat - 1.
+
+  call map_set(PROJ_LC, &
+               proj, &
+               lat1=lat1, &
+               lon1=lon1, &
+               truelat1=truelat1, &
+               truelat2=truelat2, &
+               stdlon=stdlon, &
+               dx=dx, &
+               knowni=knowni, &
+               knownj=knownj)
+
+! get corners of map projection
+
+  call ij_to_latlon(proj, 0., 0., ll_lat, ll_lon)
+  call ij_to_latlon(proj, real(nlon), real(nlat), ur_lat, ur_lon)
+  call ij_to_latlon(proj, 0., real(knowni), left_lat, left_lon)
+  call ij_to_latlon(proj, real(knownj), 0., bot_lat, bot_lon)
+  call ij_to_latlon(proj, real(nlon), knowni, right_lat, right_lon)
+  call ij_to_latlon(proj, real(knownj), real(nlat), top_lat, top_lon)
+
+  write(6,*)
+  write(6,*) 'map projection:'
+  write(6,*) 'llcrnr    =', ll_lat, ll_lon
+  write(6,*) 'urcrnr    =', ur_lat, ur_lon
+  write(6,*) 'left ctr  =', left_lat, left_lon
+  write(6,*) 'bot ctr   =', bot_lat, bot_lon
+  write(6,*) 'right ctr =', right_lat, right_lon
+  write(6,*) 'top ctr   =', top_lat, top_lon
+
+!------------------------------------------------------------------------
+
 ! loop over convinfo file entries; operate on matches
   
   allocate(cdata_all(nreal,maxobs))
@@ -124,9 +183,6 @@ subroutine read_prepbufr_metarcld(infile,analysis_time,analysis_minute,&
   nread=0
   ilon=2
   ilat=3
-
-! define esg grid
-  call esggrid%init(grid_type)
 
 ! read cloud observations from METAR
   open(lunin,file=infile,form='unformatted')
@@ -161,8 +217,8 @@ subroutine read_prepbufr_metarcld(infile,analysis_time,analysis_minute,&
            rlon=dlon_earth_deg
            rlat=dlat_earth_deg
 
-! convert to grid coordinate and check if it is inside the domain
-           call esggrid%lltoxy(rlon,rlat,xc,yc)
+! convert to grid coordinate and check if it is inside the MPAS domain
+           call latlon_to_ij(proj,rlat,rlon,xc,yc)
            dlon=xc
            dlat=yc
            if( (int(dlon) <= 0 .or. int(dlon) >= nlon) .or. &
@@ -207,7 +263,8 @@ subroutine read_prepbufr_metarcld(infile,analysis_time,analysis_minute,&
               call ufbint(lunin,metarvis,2,1,iret,metarvisstr)
               if(levs /= 1 ) then
                  write(6,*) 'READ_PREPBUFR: error in Metar observations, levs sould be 1 !!!'
-                 call stop2(110)
+                 !call stop2(110)
+                 stop 110
               endif
            endif
            ivalid=0
@@ -235,8 +292,8 @@ subroutine read_prepbufr_metarcld(infile,analysis_time,analysis_minute,&
 ! METAR cloud observation
            if(metarcldobs) then
                  cdata_all(1,iout)=rstation_id    !  station ID
-                 cdata_all(2,iout)=dlon           !  grid relative longitude
-                 cdata_all(3,iout)=dlat           !  grid relative latitude
+                 cdata_all(2,iout)=dlon           !  map projection x coordinate
+                 cdata_all(3,iout)=dlat           !  map projection y coordinate
                  cdata_all(4,iout)=stnelev        !  station  elevation
                  if(metarvis(1,1) < r0_1_bmiss) then
                     cdata_all(5,iout)=metarvis(1,1)  !  visibility (m)
@@ -300,12 +357,23 @@ subroutine read_prepbufr_metarcld(infile,analysis_time,analysis_minute,&
   end do
   deallocate(cdata_all)
 
+! apply map projection to MPAS mesh
+
+  do i=1,nCell
+     rlon=lon_m(i)
+     rlat=lat_m(i)
+     call latlon_to_ij(proj,rlat,rlon,xc,yc)
+     x_mp_m(i)=xc
+     y_mp_m(i)=yc
+  enddo
+
 ! define a closest METAR cloud observation for each grid point
 
   if(metarcldobs .and. ndata > 0) then
      maxobs=2000000
      allocate(cdata_all(nreal,maxobs))
-     call reorg_metar_cloud_regular(cdata_out,nreal,ndata,nlon,nlat,cdata_all,maxobs,iout)
+     call reorg_metar_cloud_regular(cdata_out,nreal,ndata,nlat,nlon,nCell,lat_m,lon_m,&
+                                    x_mp_m,y_mp_m,cdata_all,maxobs,iout)
      ndata=iout
      deallocate(cdata_out)
      allocate(cdata_regular(nreal,ndata))

@@ -5,7 +5,7 @@
 #SBATCH --ntasks=1
 #SBATCH --mem=20G
 
-# Script to run process_larccld.exe for FV3 LAM for a single time
+# Script to run process_metarcld.exe for MPAS for a single time
 
 # Input Parameters
 # ================
@@ -31,21 +31,21 @@ echo
 
 # Get input data
 cp ${fix_dir}/prepobs_prep_RAP.bufrtable prepobs_prep.bufrtable
-cp ${obs_dir}/${valid}.rap.t${valid:8:2}z.lgycld.tm00.bufr_d lgycld.bufr_d
+cp ${obs_dir}/${valid}.rap.t${valid:8:2}z.prepbufr.tm00 prepbufr
 cp ${mpas_mesh_file} mesh.nc
 
 # Create namelist
-cat << EOF > namelist.nasalarc
+cat << EOF > namelist.metarcld
  &setup
   analysis_time = ${valid},
-  bufrfile='NASALaRCCloudInGSI_bufr.bufr',
-  npts_rad=3,
-  ioption = 2,
+  prepbufrfile='prepbufr'
+  twindin=0.5,
+  metar_impact_radius=20,
  /
 EOF
 
 # Clean old text files
-clean_files=( 'NASALaRC_cloud4mpas.bin' 'nasa_larc_obs_interp.txt' 'nasa_larc_obs_raw.txt' )
+clean_files=( 'mpas_metarcloud.bin' )
 for f in ${clean_files[@]}; do
   if [[ -f ${f} ]]; then
     rm ${f}
@@ -55,6 +55,6 @@ done
 # Run program
 date
 echo
-srun --export=ALL process_larccld.exe
+srun --export=ALL process_metarcld.exe
 echo
 date
