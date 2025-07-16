@@ -464,7 +464,7 @@ program  process_NASALaRC_cloud
                 w_tcld(im),w_frac(im),w_lwp(im),nlev_cld(im)
      enddo
 !
-     open(15, file='NASALaRC_cloud4fv3.bin',form='unformatted')
+     open(15, file='NASALaRC_cloud4mpas.bin',form='unformatted')
         write(15)  nlon,nlat,nCell
         write(15)  index
         write(15)  w_pcld
