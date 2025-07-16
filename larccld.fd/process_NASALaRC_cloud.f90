@@ -485,11 +485,6 @@ program  process_NASALaRC_cloud
        close(13)
      endif
 
-!=========================================================================
-! There should be additional code here that has not been added yet. See 
-! process_NASALaRC_cloud.f90
-!=========================================================================
-
      write(6,*) "=== RAPHRRR PREPROCCESS SUCCESS ==="
   endif ! if mype==0 
 
