@@ -139,7 +139,7 @@ program  process_metar_cloud
 !
      if (debug > 0) then
        open(13, file="processed_metar_obs_mpas.txt", status="new", action="write")
-       write(13,'(13a12)') 'icell', 'MPAS lat', 'MAPS lon', 'sta lat', 'sta lon', 'min dist', 'ID', &
+       write(13,'(13a12)') 'icell', 'MPAS_lat', 'MPAS_lon', 'sta_lat', 'sta_lon', 'min_dist', 'ID', &
               'cover1', 'cover2', 'cover3', 'base1', 'base2', 'base3' 
        do i=1,ndata
           icell = cdata_regular(24,i)
