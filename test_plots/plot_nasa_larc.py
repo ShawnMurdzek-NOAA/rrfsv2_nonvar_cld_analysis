@@ -30,7 +30,7 @@ import datetime as dt
 infile = sys.argv[1]
 
 # Output file tag
-out_tag = sys.argv[1].split('.')[0]
+out_tag = sys.argv[1].split('/')[-1].split('.')[0]
 
 # Plotting parameters
 param = {'ptop': {'cmap': 'plasma',
