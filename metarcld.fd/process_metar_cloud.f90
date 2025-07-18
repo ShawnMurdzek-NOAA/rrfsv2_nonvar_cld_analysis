@@ -96,7 +96,7 @@ program  process_metar_cloud
      prepbufrfile='prepbufr'
      analysis_minute=0
      twindin=0.5
-     debug=1
+     debug=0
  
      inquire(file='namelist.metarcld', EXIST=ifexist )
      if(ifexist) then

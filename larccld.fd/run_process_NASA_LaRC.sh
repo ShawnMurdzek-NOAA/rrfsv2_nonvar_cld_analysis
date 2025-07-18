@@ -41,6 +41,7 @@ cat << EOF > namelist.nasalarc
   bufrfile='NASALaRCCloudInGSI_bufr.bufr',
   npts_rad=3,
   ioption = 2,
+  debug=1,
  /
 EOF
 
