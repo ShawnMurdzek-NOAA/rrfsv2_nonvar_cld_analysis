@@ -3,7 +3,7 @@ Plot NASA LaRC Obs Dumped in a Text File
 
 Passed Arguments
 ----------------
-sys.argv[1] : Input text file name
+sys.argv[1] : Input text file name dumped by larccld.fd
 sys.argv[2] : Domain name
 
 shawn.s.murdzek@noaa.gov
