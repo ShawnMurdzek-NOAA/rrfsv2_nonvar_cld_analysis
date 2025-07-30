@@ -110,10 +110,10 @@ contains
        this%maxlvl = 33
        this%rthresh_ref=-500.0
        this%rthresh_miss=-5000.0
-!    elseif( tversion == 1 ) then
-!       this%maxlvl = 33
-!       this%rthresh_ref=-90.0
-!       this%rthresh_miss=-900.0
+    elseif( tversion == 1 ) then
+       this%maxlvl = 33
+       this%rthresh_ref=-90.0
+       this%rthresh_miss=-900.0
     else
        write(*,*) 'unknow tversion !'
        stop 1234
@@ -133,29 +133,28 @@ contains
 !    write(*,*) 'set mosaic level=',this%levelheight
 
     this%mosaicfile='none'
-!    if ( tversion == 1 ) then
-!       open(10,file='filelist_mrms',form='formatted',err=300)
-!       do n=1,200
-!          read(10,'(a)',err=200,end=400) filenameall(n)
-!       enddo
-!300    write(6,*) 'read_grib2 open filelist_mrms failed ',mypelocal
-!       stop 555
-!200    write(6,*) 'read_grib2 read msmr file failed ',n,mypelocal
-!       stop 555
-!400    nlevel=n-1
-!       close(10)
-!
-!       if(nlevel .gt. this%maxlvl) then
-!          write(*,*) 'vertical level is too large:',nlevel,this%maxlvl
-!          stop 666
-!       endif
-!       if(mypeLocal <= this%maxlvl) then
-!          this%mosaicfile=trim(filenameall(mypeLocal))
-!          write(*,*) 'process level:',mypeLocal,trim(this%mosaicfile)
-!       endif
-!
-!    elseif(tversion==81) then
-     if ( tversion == 81 ) then
+    if ( tversion == 1 ) then
+       open(10,file='filelist_mrms',form='formatted',err=300)
+       do n=1,200
+          read(10,'(a)',err=200,end=400) filenameall(n)
+       enddo
+300    write(6,*) 'read_grib2 open filelist_mrms failed ',mypelocal
+       stop 555
+200    write(6,*) 'read_grib2 read msmr file failed ',n,mypelocal
+       stop 555
+400    nlevel=n-1
+       close(10)
+
+       if(nlevel .gt. this%maxlvl) then
+          write(*,*) 'vertical level is too large:',nlevel,this%maxlvl
+          stop 666
+       endif
+       if(mypeLocal <= this%maxlvl) then
+          this%mosaicfile=trim(filenameall(mypeLocal))
+          write(*,*) 'process level:',mypeLocal,trim(this%mosaicfile)
+       endif
+
+    elseif(tversion==81) then
        if(mypeLocal <= 8) then
           write(this%mosaicfile,'(a,a,I1)') trim(dataPath), 'mosaic_t',mypeLocal
           write(*,*) 'process tile:',trim(this%mosaicfile)
@@ -268,9 +267,9 @@ contains
        fileexist=.true.
 225    continue
        close(99)
-!    elseif(tversion == 1) then
-!       inquire(file=trim(mosaicfile),exist=fileexist)
-!       if(mypeLocal > this%maxlvl) fileexist=.false.
+    elseif(tversion == 1) then
+       inquire(file=trim(mosaicfile),exist=fileexist)
+       if(mypeLocal > this%maxlvl) fileexist=.false.
     endif
 
     if(.not.fileexist) then
@@ -309,19 +308,19 @@ contains
          lonMax=lonMin+dlon*(mscNlon-1)
          latMax=rlatmax
          latMin=latMax-dlat*(mscNlat-1)
-!    elseif( tversion == 1 ) then
-!         call read_grib2_head(mosaicfile,nx,ny,nz,rlonmin,rlatmax,&
-!                   rdx,rdy)
-!         var_scale=1
-!         mscNlon=nx
-!         mscNlat=ny
-!         mscNlev=nz
-!         dlon=rdx
-!         dlat=rdy
-!         lonMin=rlonmin
-!         lonMax=lonMin+dlon*(mscNlon-1)
-!         latMax=rlatmax
-!         latMin=latMax-dlat*(mscNlat-1)
+    elseif( tversion == 1 ) then
+         call read_grib2_head(mosaicfile,nx,ny,nz,rlonmin,rlatmax,&
+                   rdx,rdy)
+         var_scale=1
+         mscNlon=nx
+         mscNlat=ny
+         mscNlev=nz
+         dlon=rdx
+         dlat=rdy
+         lonMin=rlonmin
+         lonMax=lonMin+dlon*(mscNlon-1)
+         latMax=rlatmax
+         latMin=latMax-dlat*(mscNlat-1)
     else
          write(*,*) ' unknown tile version !!!'
          stop 123
@@ -355,7 +354,7 @@ contains
 !
 !  ingest mosaic file and interpolation
 !  
-!    if(tversion == 1) mscNlev=1
+    if(tversion == 1) mscNlev=1
     allocate(this%mscValue3d(mscNlon,mscNlat,mscNlev))
     allocate(mscValue(mscNlon,mscNlat))
 
@@ -400,27 +399,27 @@ contains
           enddo
        enddo
        deallocate(var)
-!    elseif(tversion == 1) then
-!       ntot = nx*ny*nz
-!       call read_grib2_sngle(mosaicfile,ntot,height,mscValue)
-!       if(this%levelheight(mypeLocal) .eq. height) then
-!            worklevel=mypeLocal
-!       else
-!            worklevel=0
-!            do k=1,this%maxlvl
-!               if (this%levelheight(k) .eq. height) worklevel=k
-!            enddo
-!            if(worklevel==0) then
-!               write(6,*) 'Error, cannot find working level', &
-!                         mypeLocal,this%levelheight(mypeLocal), height
-!               stop 12345
-!            else
-!               write(6,*) 'Find new level for core ',mypeLocal,' new level is',worklevel   
-!            endif
-!       endif
-!       this%ilevel=worklevel
-!       this%mscValue3d(:,:,1)=mscValue(:,:)
-!       write(*,*) 'level max min height',mypeLocal,maxval(this%mscValue3d),minval(this%mscValue3d),height
+    elseif(tversion == 1) then
+       ntot = nx*ny*nz
+       call read_grib2_sngle(mosaicfile,ntot,height,mscValue)
+       if(this%levelheight(mypeLocal) .eq. height) then
+            worklevel=mypeLocal
+       else
+            worklevel=0
+            do k=1,this%maxlvl
+               if (this%levelheight(k) .eq. height) worklevel=k
+            enddo
+            if(worklevel==0) then
+               write(6,*) 'Error, cannot find working level', &
+                         mypeLocal,this%levelheight(mypeLocal), height
+               stop 12345
+            else
+               write(6,*) 'Find new level for core ',mypeLocal,' new level is',worklevel   
+            endif
+       endif
+       this%ilevel=worklevel
+       this%mscValue3d(:,:,1)=mscValue(:,:)
+       write(*,*) 'level max min height',mypeLocal,maxval(this%mscValue3d),minval(this%mscValue3d),height
     else
        write(*,*) 'unknown type'
        stop 1234

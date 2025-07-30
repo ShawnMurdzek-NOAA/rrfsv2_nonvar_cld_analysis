@@ -9,12 +9,16 @@
 *.bufr_d
 *.bufrtable
 *.bin
+*.grib2
 prepbufr
 !fix/*.bufrtable
 
 # Namelists generated on-the-fly
 larccld.fd/namelist.nasalarc
 metarcld.fd/namelist.metarcld
+mosaic.fd/namelist.mosaic
+mosaic.fd/namelist.mosaic_netcdf
+mosaic.fd/filelist_mrms
 
 # Other
 *.swp
