@@ -78,6 +78,7 @@ program process_NSSL_mosaic
 !  precip_dbz_vert_skip      vertical thinning factor for reflectivity data in precipitation
 !  clear_air_dbz_horiz_skip  horizontal thinning factor for clear air reflectivity data
 !  clear_air_dbz_vert_skip   vertical thinning factor for clear air reflectivity data
+!  remove_bdy                logical controlling whether to set reflectivity values along the boundary as missing
 !
   logical :: output_netcdf = .false.
   real :: max_height = 20000.0
@@ -89,11 +90,13 @@ program process_NSSL_mosaic
   integer :: precip_dbz_vert_skip = 0
   integer :: clear_air_dbz_horiz_skip = 0
   integer :: clear_air_dbz_vert_skip = 0
-  namelist/setup_netcdf/ output_netcdf, max_height,                       &
-                         use_clear_air_type, precip_dbz_thresh,           &
-                         clear_air_dbz_thresh, clear_air_dbz_value,       &
-                         precip_dbz_horiz_skip, precip_dbz_vert_skip,     &
-                         clear_air_dbz_horiz_skip, clear_air_dbz_vert_skip
+  logical :: remove_bdy = .false.
+  namelist/setup_netcdf/ output_netcdf, max_height,                        &
+                         use_clear_air_type, precip_dbz_thresh,            &
+                         clear_air_dbz_thresh, clear_air_dbz_value,        &
+                         precip_dbz_horiz_skip, precip_dbz_vert_skip,      &
+                         clear_air_dbz_horiz_skip, clear_air_dbz_vert_skip,&
+                         remove_bdy
   logical, allocatable :: precip_ob(:,:)
   logical, allocatable :: clear_air_ob(:,:)
   integer, parameter :: maxMosaiclvl=33
@@ -139,6 +142,26 @@ program process_NSSL_mosaic
     close(15)
   endif
 
+!
+! Turn off thinning (not necessary for nonvar cloud analysis)
+!
+  if ( (precip_dbz_horiz_skip .gt. 0) .or. (precip_dbz_vert_skip .gt. 0) .or. &
+       (clear_air_dbz_horiz_skip .gt. 0) .or. (clear_air_dbz_vert_skip .gt. 0) ) then
+    if (mype==0) then
+      write(6,*) 
+      write(6,*) '!!!WARNING!!!'
+      write(6,*) 'Thinning of reflectivity observations not supported.'
+      write(6,*) 'Setting precip_dbz_vert_skip, precip_dbz_horiz_skip,' 
+      write(6,*) 'clear_air_dbz_vert_skip, and clear_air_dbz_horiz_skip to 0'
+      write(6,*)
+    endif
+  endif
+
+  precip_dbz_horiz_skip=0
+  precip_dbz_vert_skip=0
+  clear_air_dbz_horiz_skip=0
+  clear_air_dbz_vert_skip=0
+
   if(mype==0) then
     write(6,*)
     write(6,*) 'tversion = ', tversion
@@ -154,6 +177,7 @@ program process_NSSL_mosaic
     write(6,*) 'precip_dbz_vert_skip = ', precip_dbz_vert_skip
     write(6,*) 'clear_air_dbz_horiz_skip = ', clear_air_dbz_horiz_skip
     write(6,*) 'clear_air_dbz_vert_skip = ', clear_air_dbz_vert_skip
+    write(6,*) 'remove_bdy = ', remove_bdy
     write(6,*)
   endif
 
@@ -201,9 +225,11 @@ program process_NSSL_mosaic
   call read_MPAS_nCell(meshfile, nCell)
   allocate(lat_m(nCell))
   allocate(lon_m(nCell))
-  allocate(bdyMask(nCell))
   call read_MPAS_lat_lon(meshfile, nCell, lat_m, lon_m)
-  call read_MPAS_bdyMaskCell(meshfile, nCell, bdyMask)
+  if (remove_bdy) then
+    allocate(bdyMask(nCell))
+    call read_MPAS_bdyMaskCell(meshfile, nCell, bdyMask)
+  endif
   if(mype==0) then
     write(6,*)
     write(6,*) 'model nCell   =', nCell
@@ -278,11 +304,13 @@ program process_NSSL_mosaic
 
         ! Don't produce any netcdf radar observations along the lateral boundaries
         ! bdyMaskCell = 7 values indicate cells along the edge of the domain
-        do i=1,nCell
-          if (bdyMask(i) .gt. 6) then
-            ref0(i,:) = -999.0
-          endif
-        enddo
+        if (remove_bdy) then
+          do i=1,nCell
+            if (bdyMask(i) .gt. 6) then
+              ref0(i,:) = -999.0
+            endif
+          enddo
+        endif
 
         ! Identify precip and clear-air reflectivity observations
         precip_ob(:,:) = .false.
@@ -305,15 +333,16 @@ program process_NSSL_mosaic
         write(*,*) 'number of precip obs found, before thinning, = ', num_precip_obs
         write(*,*) 'number of clear air obs found, before thinning, = ', num_clear_air_obs
 
-        ! Thin precip reflectivity observations
-        if (precip_dbz_vert_skip .gt. 0) then
-          do k=1,maxlvl
-            if (mod(k-1, precip_dbz_vert_skip+1) .ne. 0) then
-              write(*,*) 'Thinning:  removing precip obs at level ', k
-              precip_ob(:,k) = .false.
-            endif
-          enddo
-        endif
+        ! Thin precip reflectivity observations (not needed for nonvar cloud analysis)
+        ! Note: This code does not work with MPAS
+        !if (precip_dbz_vert_skip .gt. 0) then
+        !  do k=1,maxlvl
+        !    if (mod(k-1, precip_dbz_vert_skip+1) .ne. 0) then
+        !      write(*,*) 'Thinning:  removing precip obs at level ', k
+        !      precip_ob(:,k) = .false.
+        !    endif
+        !  enddo
+        !endif
         !if (precip_dbz_horiz_skip .gt. 0) then
         !  write(*,*) 'Horizontal thinning of precip obs'
         !  do i=1,nCell
@@ -332,15 +361,16 @@ program process_NSSL_mosaic
         !  enddo
         !endif
 
-        ! Thin clear-air reflectivity observations
-        if (use_clear_air_type .and. (clear_air_dbz_vert_skip .gt. 0) ) then
-          do k=1,maxlvl
-            if (mod(k-1, clear_air_dbz_vert_skip+1) .ne. 0) then
-              write(*,*) 'Thinning:  removing clear air obs at level ', k
-              clear_air_ob(:,k) = .false.
-            endif
-          enddo
-        endif
+        ! Thin clear-air reflectivity observations (not needed for nonvar cloud analysis)
+        ! Note: This code does not work with MPAS
+        !if (use_clear_air_type .and. (clear_air_dbz_vert_skip .gt. 0) ) then
+        !  do k=1,maxlvl
+        !    if (mod(k-1, clear_air_dbz_vert_skip+1) .ne. 0) then
+        !      write(*,*) 'Thinning:  removing clear air obs at level ', k
+        !      clear_air_ob(:,k) = .false.
+        !    endif
+        !  enddo
+        !endif
         !if (use_clear_air_type .and. (clear_air_dbz_vert_skip .lt. 0) ) then
         !  write(*,*) 'Thinning:  removing clear air obs at all but two levels'
         !  clear_air_ob(:, 1:12) = .false.

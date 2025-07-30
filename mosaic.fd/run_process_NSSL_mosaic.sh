@@ -52,10 +52,11 @@ cat << EOF > namelist.mosaic_netcdf
     precip_dbz_thresh = 10.0,
     clear_air_dbz_thresh = 5.0,
     clear_air_dbz_value = 0.0,
-    precip_dbz_horiz_skip = 1,
-    precip_dbz_vert_skip = 1,
-    clear_air_dbz_horiz_skip = 1,
-    clear_air_dbz_vert_skip = 1,
+    precip_dbz_horiz_skip = 0,
+    precip_dbz_vert_skip = 0,
+    clear_air_dbz_horiz_skip = 0,
+    clear_air_dbz_vert_skip = 0,
+    remove_bdy = .false.,
    /
 EOF
 
