@@ -33,12 +33,13 @@ program process_NSSL_mosaic
   use mpi
   use kinds, only: r_kind,i_kind
   use module_read_NSSL_refmosaic, only: read_nsslref
-  use mpasio, only: read_MPAS_nCell,read_MPAS_lat_lon,read_MPAS_bdyMaskCell
+  use module_ncio, only : ncio
 
   implicit none
 !
   INCLUDE 'netcdf.inc'
 !
+  type(ncio) :: rrfs
   type(read_nsslref) :: readref 
 
 !
@@ -47,23 +48,22 @@ program process_NSSL_mosaic
 !
   character*256 output_file
 !
-!  gridded reflectivity
-  REAL, allocatable :: ref3d(:,:)   ! 3D reflectivity
-  REAL, allocatable :: ref0(:,:)   ! 3D reflectivity
+!  grid
+  integer(i_kind) :: nlon,nlat
+  real,allocatable:: xlon(:,:)    !
+  real,allocatable:: ylat(:,:)    !
+  REAL, allocatable :: ref3d(:,:,:)   ! 3D reflectivity
+  REAL, allocatable :: ref0(:,:,:)   ! 3D reflectivity
   REAL(r_kind), allocatable :: ref3d_column(:,:)   ! 3D reflectivity in column
-!
-!  MPAS mesh
-  integer(i_kind) :: nCell
-  real, allocatable :: lat_m(:),lon_m(:)
-  integer, allocatable :: bdyMask(:)
-  CHARACTER*180   meshfile
+  CHARACTER*80   geofile
 !
 !  namelist files
 !
   integer      ::  tversion
+  integer      ::  fv3_io_layout_y
   character*10 :: analysis_time
   CHARACTER*180   dataPath
-  namelist/setup/ tversion,analysis_time,dataPath
+  namelist/setup/ tversion,analysis_time,dataPath,fv3_io_layout_y
   integer(i_kind)  ::  idate
 !
 !  namelist and other variables for netcdf output
@@ -94,8 +94,8 @@ program process_NSSL_mosaic
                          clear_air_dbz_thresh, clear_air_dbz_value,       &
                          precip_dbz_horiz_skip, precip_dbz_vert_skip,     &
                          clear_air_dbz_horiz_skip, clear_air_dbz_vert_skip
-  logical, allocatable :: precip_ob(:,:)
-  logical, allocatable :: clear_air_ob(:,:)
+  logical, allocatable :: precip_ob(:,:,:)
+  logical, allocatable :: clear_air_ob(:,:,:)
   integer, parameter :: maxMosaiclvl=33
   real :: height_real(maxMosaiclvl)
   integer :: levelheight(maxMosaiclvl)
@@ -126,6 +126,7 @@ program process_NSSL_mosaic
 
   if(mype==0) write(*,*) mype, 'deal with mosaic'
 
+  fv3_io_layout_y=1
   datapath="./"
   open(15, file='namelist.mosaic')
     read(15,setup)
@@ -144,6 +145,7 @@ program process_NSSL_mosaic
     write(6,*) 'tversion = ', tversion
     write(6,*) 'analysis_time = ', analysis_time
     write(6,*) 'dataPath = ', dataPath
+    write(6,*) 'fv3_io_layout_y = ', fv3_io_layout_y
     write(6,*) 'output_netcdf = ', output_netcdf
     write(6,*) 'max_height = ', max_height
     write(6,*) 'use_clear_air_type = ', use_clear_air_type
@@ -195,217 +197,236 @@ program process_NSSL_mosaic
 !
   maxlvl=readref%maxlvl
 !
-! get model domain dimension
+!  
+  do id=0,fv3_io_layout_y-1
 !
-  meshfile='mesh.nc'
-  call read_MPAS_nCell(meshfile, nCell)
-  write(6,*)
-  write(6,*) 'model nCell   =', nCell
-  allocate(lat_m(nCell))
-  allocate(lon_m(nCell))
-  allocate(bdyMask(nCell))
-  call read_MPAS_lat_lon(meshfile, nCell, lat_m, lon_m)
-  call read_MPAS_bdyMaskCell(meshfile, nCell, bdyMask)
-  write(6,*) 'min model lat =', minval(lat_m)
-  write(6,*) 'min model lon =', minval(lon_m)
-  write(6,*) 'max model lat =', maxval(lat_m)
-  write(6,*) 'max model lon =', maxval(lon_m)
-  write(6,*)
+! get domain dimension
+!
+     if(fv3_io_layout_y==1) then
+        write(geofile,'(a,a)') './', 'fv3sar_grid_spec.nc'
+     else
+        write(geofile,'(a,a,I4.4)') './', 'fv3sar_grid_spec.nc.',id
+     endif
+     call rrfs%open(trim(geofile),"r",0)
+     call rrfs%get_dim("grid_xt",nlon)
+     call rrfs%get_dim("grid_yt",nlat)
+     allocate(xlon(nlon,nlat))
+     allocate(ylat(nlon,nlat))
+     call rrfs%get_var("grid_lont",nlon,nlat,xlon)
+     call rrfs%get_var("grid_latt",nlon,nlat,ylat)
+     if(mype==0) then
+       write(*,*) 'FV3LAM grid from ',trim(geofile)
+       write(*,*) 'nx_rrfs,ny_rrfs=',nlon,nlat
+       write(*,*) 'max, min lon=', maxval(xlon),minval(xlon)
+       write(*,*) 'max, min lat=', maxval(ylat),minval(ylat)
+     endif
+     call rrfs%close()
 
-  allocate(ref3d(nCell,maxlvl))
-  ref3d=-999.0
-  call mosaic2grid(readref,nCell,maxlvl,lon_m,lat_m,ref3d)
-  call mpi_barrier(MPI_COMM_WORLD,ierror)
+     allocate(ref3d(nlon,nlat,maxlvl))
+     ref3d=-999.0
+     call mosaic2grid(readref,nlon,nlat,maxlvl,xlon,ylat,ref3d)
+     call mpi_barrier(MPI_COMM_WORLD,ierror)
 !
 !  collect data from all processes to root (0)
 !
-  if(mype==0) then
-     allocate( ref0(nCell,maxlvl) )
-  endif
-  call MPI_REDUCE(ref3d, ref0, nCell*maxlvl, MPI_REAL, MPI_MAX, 0, &
-                  MPI_COMM_WORLD, ierror)
-  deallocate(ref3d)
+     if(mype==0) then
+        allocate( ref0(nlon,nlat,maxlvl) )
+     endif
+     call MPI_REDUCE(ref3d, ref0, nlon*nlat*maxlvl, MPI_REAL, MPI_MAX, 0, &
+                     MPI_COMM_WORLD, ierror)
+     deallocate(ref3d)
 !
-  if(mype==0) then
-     write(outfile,'(a,a)') './', 'RefInGSI3D.dat'
-     write(outfile_netcdf,'(a,a)') './', 'Gridded_ref.nc'
-     OPEN(10,file=trim(outfile),form='unformatted')
-        write(10) maxlvl,nCell
-        write(10) ref0
-     close(10)
-     DO k=1,maxlvl
-        write(*,*) k,maxval(ref0(:,k)),minval(ref0(:,k))
-     ENDDO
+     if(mype==0) then
+        if(fv3_io_layout_y==1) then
+           write(outfile,'(a,a)') './', 'RefInGSI3D.dat'
+           write(outfile_netcdf,'(a,a)') './', 'Gridded_ref.nc'
+        else
+           write(outfile,'(a,a,I4.4)') './', 'RefInGSI3D.dat.',id
+           write(outfile_netcdf,'(a,a,I4.4,a)') './', 'Gridded_ref.',id,'.nc'
+        endif
+        OPEN(10,file=trim(outfile),form='unformatted')
+           write(10) maxlvl,nlon,nlat
+           write(10) ref0
+        close(10)
+        DO k=1,maxlvl
+           write(*,*) k,maxval(ref0(:,:,k)),minval(ref0(:,:,k))
+        ENDDO
 
 ! turn this part off to speed up the process for RRFS.
-! Writing to a BUFR file has been adapted for MPAS, but has not been tested. Use at your own risk!!
-     if(1==2) then
+       if(1==2) then
 !
-        allocate(ref3d_column(maxlvl+1,nCell))
+        allocate(ref3d_column(maxlvl+2,nlon*nlat))
         ref3d_column=-999.0
         numref=0
-        DO i=1,nCell
+        DO j=1,nlat
+        DO i=1,nlon
           numlvl=0
           DO k=1,maxlvl
-            if(abs(ref0(i,k)) < 888.0 ) numlvl=numlvl+1
+            if(abs(ref0(i,j,k)) < 888.0 ) numlvl=numlvl+1
           ENDDO
           if(numlvl > 0 ) then
             numref=numref+1
             ref3d_column(1,numref)=float(i)
+            ref3d_column(2,numref)=float(j)
             DO k=1,maxlvl
-               ref3d_column(1+k,numref)=ref0(i,k)
+               ref3d_column(2+k,numref)=ref0(i,j,k)
             ENDDO
           endif
         ENDDO
+        ENDDO
 
-        write(*,*) 'Dump out results', numref, 'out of', nCell
+        write(*,*) 'Dump out results', numref, 'out of', nlon*nlat
         OPEN(10,file='./'//'RefInGSI.dat',form='unformatted')
-          write(10) maxlvl,nCell,numref,1,2
-          write(10) ((ref3d_column(k,i),k=1,maxlvl+2),i=1,numref)
+         write(10) maxlvl,nlon,nlat,numref,1,2
+         write(10) ((ref3d_column(k,i),k=1,maxlvl+2),i=1,numref)
         close(10)
   
         write(*,*) 'Start write_bufr_nsslref'
-        call write_bufr_nsslref(maxlvl,nCell,numref,ref3d_column,idate)
+        call write_bufr_nsslref(maxlvl,nlon,nlat,numref,ref3d_column,idate)
         deallocate(ref3d_column)
-     endif
+       endif
 
-     if ( output_netcdf .and. (maxlvl.eq.maxMosaiclvl) ) then
+       if ( output_netcdf .and. (maxlvl.eq.maxMosaiclvl) ) then
 
-        allocate( precip_ob(nCell,maxlvl) )
-        allocate( clear_air_ob(nCell,maxlvl) )
+         allocate( precip_ob(nlon,nlat,maxlvl) )
+         allocate( clear_air_ob(nlon,nlat,maxlvl) )
 
-        ! Don't produce any netcdf radar observations along the lateral boundaries
-        ! bdyMaskCell = 7 values indicate cells along the edge of the domain
-        do i=1,nCell
-          if (bdyMask(i) .gt. 6) then
-            ref0(i,:) = -999.0
-          endif
-        enddo
+         ! Don't produce any netcdf radar observations along the lateral boundaries
+         ref0(1,:,:) = -999.0
+         ref0(nlon,:,:) = -999.0
+         ref0(:,1,:) = -999.0
+         ref0(:,nlat,:) = -999.0
 
-        ! Identify precip and clear-air reflectivity observations
-        precip_ob(:,:) = .false.
-        clear_air_ob(:,:) = .false.
-        num_precip_obs = 0
-        num_clear_air_obs = 0
-        do i=1,nCell
-          do k=1,maxlvl
-            if ( (levelheight(k) .le. max_height) .and. (ref0(i,k) .ge. precip_dbz_thresh) ) then
-              precip_ob(i,k) = .true.
-              num_precip_obs = num_precip_obs + 1
-            else if ( use_clear_air_type .and. (levelheight(k) .le. max_height) .and. &
-                      (ref0(i,k) .gt. -900.0) .and. (ref0(i,k) .le. clear_air_dbz_thresh) ) then
-              clear_air_ob(i,k) = .true.
-              ref0(i,k) = clear_air_dbz_value
-              num_clear_air_obs = num_clear_air_obs + 1
-            endif
-          enddo
-        enddo
-        write(*,*) 'number of precip obs found, before thinning, = ', num_precip_obs
-        write(*,*) 'number of clear air obs found, before thinning, = ', num_clear_air_obs
+         ! Identify precip and clear-air reflectivity observations
+         precip_ob(:,:,:) = .false.
+         clear_air_ob(:,:,:) = .false.
+         num_precip_obs = 0
+         num_clear_air_obs = 0
+         do j=2,nlat-1
+           do i=2,nlon-1
+             do k=1,maxlvl
+               if ( (levelheight(k) .le. max_height) .and. (ref0(i,j,k) .ge. precip_dbz_thresh) ) then
+                 precip_ob(i,j,k) = .true.
+                 num_precip_obs = num_precip_obs + 1
+               else if ( use_clear_air_type .and. (levelheight(k) .le. max_height) .and. &
+                         (ref0(i,j,k) .gt. -900.0) .and. (ref0(i,j,k) .le. clear_air_dbz_thresh) ) then
+                 clear_air_ob(i,j,k) = .true.
+                 ref0(i,j,k) = clear_air_dbz_value
+                 num_clear_air_obs = num_clear_air_obs + 1
+               endif
+             enddo
+           enddo
+         enddo
+         write(*,*) 'number of precip obs found, before thinning, = ', num_precip_obs
+         write(*,*) 'number of clear air obs found, before thinning, = ', num_clear_air_obs
 
-        ! Thin precip reflectivity observations
-        if (precip_dbz_vert_skip .gt. 0) then
-          do k=1,maxlvl
-            if (mod(k-1, precip_dbz_vert_skip+1) .ne. 0) then
-              write(*,*) 'Thinning:  removing precip obs at level ', k
-              precip_ob(:,k) = .false.
-            endif
-          enddo
-        endif
-        !if (precip_dbz_horiz_skip .gt. 0) then
-        !  write(*,*) 'Horizontal thinning of precip obs'
-        !  do i=1,nCell
-        !    if ( ref0(i,1) .gt. -900.0 )  then
-        !      do k=1,maxlvl
-        !        if (precip_ob(i,k)) then
-        !          do jj=max(2, j-precip_dbz_horiz_skip), min(nlat-1, j+precip_dbz_horiz_skip)
-        !            do ii=max(2, i-precip_dbz_horiz_skip), min(nlon-1, i+precip_dbz_horiz_skip)
-        !              precip_ob(ii,k) = .false.
-        !            enddo
-        !          enddo
-        !          precip_ob(i,k) = .true.
-        !        endif
-        !      enddo
-        !    endif
-        !  enddo
-        !endif
+         ! Thin precip reflectivity observations
+         if (precip_dbz_vert_skip .gt. 0) then
+           do k=1,maxlvl
+             if (mod(k-1, precip_dbz_vert_skip+1) .ne. 0) then
+               write(*,*) 'Thinning:  removing precip obs at level ', k
+               precip_ob(:,:,k) = .false.
+             endif
+           enddo
+         endif
+         if (precip_dbz_horiz_skip .gt. 0) then
+           write(*,*) 'Horizontal thinning of precip obs'
+           do j=2,nlat-1
+             do i=2,nlon-1
+               do k=1,maxlvl
+                 if (precip_ob(i,j,k)) then
+                   do jj=max(2, j-precip_dbz_horiz_skip), min(nlat-1, j+precip_dbz_horiz_skip)
+                     do ii=max(2, i-precip_dbz_horiz_skip), min(nlon-1, i+precip_dbz_horiz_skip)
+                       precip_ob(ii,jj,k) = .false.
+                     enddo
+                   enddo
+                   precip_ob(i,j,k) = .true.
+                 endif
+               enddo
+             enddo
+           enddo
+         endif
 
-        ! Thin clear-air reflectivity observations
-        if (use_clear_air_type .and. (clear_air_dbz_vert_skip .gt. 0) ) then
-          do k=1,maxlvl
-            if (mod(k-1, clear_air_dbz_vert_skip+1) .ne. 0) then
-              write(*,*) 'Thinning:  removing clear air obs at level ', k
-              clear_air_ob(:,k) = .false.
-            endif
-          enddo
-        endif
-        !if (use_clear_air_type .and. (clear_air_dbz_vert_skip .lt. 0) ) then
-        !  write(*,*) 'Thinning:  removing clear air obs at all but two levels'
-        !  clear_air_ob(:, 1:12) = .false.
-        !  clear_air_ob(:, 14:21) = .false.
-        !  clear_air_ob(:, 23:maxlvl) = .false.
-        !endif
-        !if (use_clear_air_type .and. (clear_air_dbz_horiz_skip .gt. 0) ) then
-        !  do i=1,nCell
-        !    if ( ref0(i,1) .gt. -900.0 )  then
-        !      do k=1,maxlvl
-        !        if (clear_air_ob(i,j,k)) then
-        !          do jj=max(2, j-clear_air_dbz_horiz_skip), min(nlat-1, j+clear_air_dbz_horiz_skip)
-        !            do ii=max(2, i-clear_air_dbz_horiz_skip), min(nlon-1, i+clear_air_dbz_horiz_skip)
-        !              clear_air_ob(ii,k) = .false.
-        !            enddo
-        !          enddo
-        !          clear_air_ob(i,k) = .true.
-        !        endif
-        !      enddo
-        !    endif
-        !  enddo
-        !endif
+         ! Thin clear-air reflectivity observations
+         if (use_clear_air_type .and. (clear_air_dbz_vert_skip .gt. 0) ) then
+           do k=1,maxlvl
+             if (mod(k-1, clear_air_dbz_vert_skip+1) .ne. 0) then
+               write(*,*) 'Thinning:  removing clear air obs at level ', k
+               clear_air_ob(:,:,k) = .false.
+             endif
+           enddo
+         endif
+         if (use_clear_air_type .and. (clear_air_dbz_vert_skip .lt. 0) ) then
+           write(*,*) 'Thinning:  removing clear air obs at all but two levels'
+           clear_air_ob(:, :, 1:12) = .false.
+           clear_air_ob(:, :, 14:21) = .false.
+           clear_air_ob(:, :, 23:maxlvl) = .false.
+         endif
+         if (use_clear_air_type .and. (clear_air_dbz_horiz_skip .gt. 0) ) then
+           do j=2,nlat-1
+             do i=2,nlon-1
+               do k=1,maxlvl
+                 if (clear_air_ob(i,j,k)) then
+                   do jj=max(2, j-clear_air_dbz_horiz_skip), min(nlat-1, j+clear_air_dbz_horiz_skip)
+                     do ii=max(2, i-clear_air_dbz_horiz_skip), min(nlon-1, i+clear_air_dbz_horiz_skip)
+                       clear_air_ob(ii,jj,k) = .false.
+                     enddo
+                   enddo
+                   clear_air_ob(i,j,k) = .true.
+                 endif
+               enddo
+             enddo
+           enddo
+         endif
 
-        ! Count number of valid obs
-        num_obs = 0
-        do i=1,nCell
-          if ( ref0(i,1) .gt. -900.0 )  then
-            do k=1,maxlvl
-              if ( precip_ob(i,k) .or. clear_air_ob(i,k) ) then
-                num_obs = num_obs + 1
-              endif
-            enddo
-          endif
-        enddo
-        write(*,*) 'num_obs = ', num_obs
+         ! Count number of valid obs
+         num_obs = 0
+         do j=2,nlat-1
+           do i=2,nlon-1
+             do k=1,maxlvl
+               if ( precip_ob(i,j,k) .or. clear_air_ob(i,j,k) ) then
+                 num_obs = num_obs + 1
+               endif
+             enddo
+           enddo
+         enddo
+         write(*,*) 'num_obs = ', num_obs
 
-        ! Write obs to netcdf file
-        do k=1,maxlvl
-          height_real(k) = levelheight(k)
-          do i=1,nCell
-            if ( .not. precip_ob(i,k) .and. .not. clear_air_ob(i,k) ) then
-              ref0(i,k) = -999.0
-            endif
-          enddo
-        enddo
-        call write_netcdf_nsslref( outfile_netcdf,maxlvl,nCell,ref0,idate,lon_m,lat_m,height_real )
+         ! Write obs to netcdf file
+         do k=1,maxlvl
+           height_real(k) = levelheight(k)
+           do j=2,nlat-1
+             do i=2,nlon-1
+               if ( .not. precip_ob(i,j,k) .and. .not. clear_air_ob(i,j,k) ) then
+                 ref0(i,j,k) = -999.0
+               endif
+             enddo
+           enddo
+         enddo
+         call write_netcdf_nsslref( outfile_netcdf,maxlvl,nlon,nlat,ref0,idate,xlon,ylat,height_real )
 
-        write(*,*) 'Finish netcdf output'
+         write(*,*) 'Finish netcdf output'
 
-        deallocate(precip_ob)
-        deallocate(clear_air_ob)
+         deallocate(precip_ob)
+         deallocate(clear_air_ob)
 
-     else if (output_netcdf) then
+       else if (output_netcdf) then
 
-        write(*,*) 'unknown vertical levels'
-        write(*,*) 'maxlvl = ', maxlvl
-        write(*,*) 'maxMosaiclvl = ', maxMosaiclvl
-        write(*,*) 'no netcdf output'
+         write(*,*) 'unknown vertical levels'
+         write(*,*) 'maxlvl = ', maxlvl
+         write(*,*) 'maxMosaiclvl = ', maxMosaiclvl
+         write(*,*) 'no netcdf output'
 
-     endif ! output_netcdf
+       endif ! output_netcdf
 
-     deallocate(ref0)
+       deallocate(ref0)
 
      endif ! mype==0
 
-  deallocate(lon_m)
-  deallocate(lat_m)
+     deallocate(xlon)
+     deallocate(ylat)
+
+  enddo ! id
 
   call readref%close()
 
@@ -415,7 +436,7 @@ program process_NSSL_mosaic
 !
 end program process_NSSL_mosaic
 
-subroutine mosaic2grid(readref,nCell,maxlvl,lon_m,lat_m,ref3d)
+subroutine mosaic2grid(readref,nlon,nlat,maxlvl,xlon,ylat,ref3d)
 !
 !   PRGMMR: Ming Hu          ORG: GSL        DATE: 2022-01-20
 !
@@ -447,10 +468,10 @@ subroutine mosaic2grid(readref,nCell,maxlvl,lon_m,lat_m,ref3d)
   implicit none
 !
   type(read_nsslref),intent(in) :: readref 
-  integer,intent(in) :: nCell,maxlvl
-  real,intent(in)    :: lon_m(nCell)    !
-  real,intent(in)    :: lat_m(nCell)    !
-  real,intent(inout) :: ref3d(nCell,maxlvl)   ! 3D reflectivity
+  integer,intent(in) :: nlon,nlat,maxlvl
+  real,intent(in)    :: xlon(nlon,nlat)    !
+  real,intent(in)    :: ylat(nlon,nlat)    !
+  real,intent(inout) :: ref3d(nlon,nlat,maxlvl)   ! 3D reflectivity
 !
 !  For reflectiivty mosaic
 !
@@ -459,7 +480,7 @@ subroutine mosaic2grid(readref,nCell,maxlvl,lon_m,lat_m,ref3d)
 !
 !  ** misc
 !      
-  integer i,k,kk
+  integer i,j,k,kk
   integer :: tversion
 
   REAL ::  rlat,rlon
@@ -493,9 +514,10 @@ subroutine mosaic2grid(readref,nCell,maxlvl,lon_m,lat_m,ref3d)
              mscValue(:,:) = readref%mscValue3d(:,:,k)
           endif
 !
-          DO i=1,nCell
-             rlat=lat_m(i)
-             rlon=lon_m(i)
+          DO j=1,nlat
+          DO i=1,nlon
+             rlat=ylat(i,j)
+             rlon=xlon(i,j)
 
              if(tversion == 14 ) then
                rip=(rlon-lonMin)/dlon+1
@@ -545,15 +567,16 @@ subroutine mosaic2grid(readref,nCell,maxlvl,lon_m,lat_m,ref3d)
                ref4=mscValue(ip,jpp1)
                if(ref1 > readref%rthresh_ref .and. ref2 > readref%rthresh_ref .and.  &
                   ref3 > readref%rthresh_ref .and. ref4 > readref%rthresh_ref ) then
-                  ref3d(i,kk)=(ref1*w1+ref2*w2+ref3*w3+ref4*w4)/float(readref%var_scale)
+                  ref3d(i,j,kk)=(ref1*w1+ref2*w2+ref3*w3+ref4*w4)/float(readref%var_scale)
                elseif(ref1 > readref%rthresh_miss .and. ref2 > readref%rthresh_miss .and.  &
                   ref3 > readref%rthresh_miss .and. ref4 > readref%rthresh_miss ) then
-                  ref3d(i,kk)=-99.0   ! clear
+                  ref3d(i,j,kk)=-99.0   ! clear
                else
-                  ref3d(i,kk)=-999.0  ! no observation
+                  ref3d(i,j,kk)=-999.0  ! no observation
                endif
              endif
              endif
+          ENDDO
           ENDDO
       ENDDO  ! mscNlev
 

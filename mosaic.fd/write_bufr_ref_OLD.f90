@@ -1,4 +1,4 @@
-  subroutine write_bufr_nsslref(maxlvl,nCell,numref,ref3d_column,idate)
+  subroutine write_bufr_nsslref(maxlvl,nlon,nlat,numref,ref3d_column,idate)
 !$$$  subprogram documentation block
 !                .      .    .                                       .
 ! subprogram:    write_bufr_nsslref
@@ -22,8 +22,7 @@
     use kinds, only: r_kind,i_kind
     implicit none
 
-    integer :: nCell
-    REAL(r_kind) :: ref3d_column(maxlvl+2,nCell)   ! 3D reflectivity in column
+    REAL(r_kind) :: ref3d_column(maxlvl+2,nlon*nlat)   ! 3D reflectivity in column
     real(r_kind) :: hdr(5),obs(1,35)
     character(80):: hdrstr='SID XOB YOB DHR TYP'
     character(80):: obsstr='HREF'
@@ -51,10 +50,10 @@
 !
     DO i=1,numref
     DO k=1,maxlvl
-      if(ref3d_column(k+1,i) < -63.0 .and. ref3d_column(k+1,i) > -100.0 ) then
-        ref3d_column(k+1,i)=-63.0_r_kind
-      elseif(ref3d_column(k+1,i) < -100.0) then
-        ref3d_column(k+1,i)=-64.0_r_kind
+      if(ref3d_column(k+2,i) < -63.0 .and. ref3d_column(k+2,i) > -100.0 ) then
+        ref3d_column(k+2,i)=-63.0_r_kind
+      elseif(ref3d_column(k+2,i) < -100.0) then
+        ref3d_column(k+2,i)=-64.0_r_kind
       endif
     ENDDO
     ENDDO
@@ -66,13 +65,13 @@
     call openbf(lendian_in,'OUT',ludx)
     do n=1,numref
       hdr(1)=transfer(sid,hdr(1))
-      hdr(2)=ref3d_column(1,n)/10.0_r_kind  ! XOB = cell index
-      hdr(3)=0                              ! YOB = 0
+      hdr(2)=ref3d_column(1,n)/10.0_r_kind
+      hdr(3)=ref3d_column(2,n)/10.0_r_kind
       hdr(4)=0
       hdr(5)=500
 
       do k=1,maxlvl
-        obs(1,k)=ref3d_column(1+k,n)
+        obs(1,k)=ref3d_column(2+k,n)
       enddo
       call openmb(lendian_in,subset,idate)
       call ufbint(lendian_in,hdr,5,   1,iret,hdrstr)

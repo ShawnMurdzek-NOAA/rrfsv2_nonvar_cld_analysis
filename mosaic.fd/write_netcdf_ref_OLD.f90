@@ -1,24 +1,24 @@
-Subroutine write_netcdf_nsslref( FILE_NAME,nlvls,nCell,ref0,idate,lon_m,lat_m,msclev )
+Subroutine write_netcdf_nsslref( FILE_NAME,nlvls,nlons,nlats,ref0,idate,xlon,ylat,msclev )
   use netcdf
   implicit none
 
   character*256 FILE_NAME
   integer :: ncid
 
-  integer, parameter             :: NDIMS=2
+  integer, parameter             :: NDIMS=3
+  integer, parameter             :: NDIMS2D=2
   character (len = *), parameter :: LVL_NAME = "height"
-  character (len = *), parameter :: CELL_NAME = "cell"
   character (len = *), parameter :: LAT_NAME = "latitude"
   character (len = *), parameter :: LON_NAME = "longitude"
-  integer :: lvl_dimid, cell_dimid
-  integer :: NLVLS, NCELL
+  integer :: lvl_dimid, lon_dimid, lat_dimid
+  integer :: NLVLS, NLATS, NLONS
 
-  real, dimension(NCELL) :: lon_m
-  real, dimension(NCELL) :: lat_m
-  real, dimension(NCELL, NLVLS) :: ref0
+  real, dimension(NLONS, NLATS) :: xlon
+  real, dimension(NLONS, NLATS) :: ylat
+  real, dimension(NLONS, NLATS, NLVLS) :: ref0
   real, dimension(NLVLS) :: msclev
 
-  integer :: lon_varid, lat_varid, dimids(NDIMS)
+  integer :: lon_varid, lat_varid, dimids(NDIMS), dimids2d(NDIMS2D)
   integer :: ref_varid, lvl_varid
   integer :: idate
 
@@ -38,11 +38,14 @@ Subroutine write_netcdf_nsslref( FILE_NAME,nlvls,nCell,ref0,idate,lon_m,lat_m,ms
 
   ! Define the dimensions. 
   call check( nf90_def_dim(ncid, LVL_NAME, NLVLS, lvl_dimid) )
-  call check( nf90_def_dim(ncid, CELL_NAME, NCELL, cell_dimid) )
+  call check( nf90_def_dim(ncid, LAT_NAME, NLATS, lat_dimid) )
+  call check( nf90_def_dim(ncid, LON_NAME, NLONS, lon_dimid) )
+
+  dimids2d = (/ lon_dimid, lat_dimid /)
 
   ! Define the coordinate variables.
-  call check( nf90_def_var(ncid, LAT_NAME, NF90_REAL, cell_dimid, lat_varid) )
-  call check( nf90_def_var(ncid, LON_NAME, NF90_REAL, cell_dimid, lon_varid) )
+  call check( nf90_def_var(ncid, LAT_NAME, NF90_REAL, dimids2d, lat_varid) )
+  call check( nf90_def_var(ncid, LON_NAME, NF90_REAL, dimids2d, lon_varid) )
   call check( nf90_def_var(ncid, LVL_NAME, NF90_REAL, lvl_dimid, lvl_varid) )
 
   ! Assign units attributes to coordinate variables.
@@ -50,7 +53,7 @@ Subroutine write_netcdf_nsslref( FILE_NAME,nlvls,nCell,ref0,idate,lon_m,lat_m,ms
   call check( nf90_put_att(ncid, lon_varid, UNITS, LON_UNITS) )
   call check( nf90_put_att(ncid, lvl_varid, UNITS, LVL_UNITS) )
 
-  dimids = (/ cell_dimid, lvl_dimid /)
+  dimids = (/ lon_dimid, lat_dimid, lvl_dimid /)
   
   ! Define the netCDF variables for the reflectivity data.
   call check( nf90_def_var(ncid, REF_NAME, NF90_REAL, dimids, ref_varid) )
@@ -63,8 +66,8 @@ Subroutine write_netcdf_nsslref( FILE_NAME,nlvls,nCell,ref0,idate,lon_m,lat_m,ms
 
   ! Write the coordinate variable data. This will put the latitudes
   ! and longitudes of our data grid into the netCDF file.
-  call check( nf90_put_var(ncid, lat_varid, lat_m) )
-  call check( nf90_put_var(ncid, lon_varid, lon_m) )
+  call check( nf90_put_var(ncid, lat_varid, ylat) )
+  call check( nf90_put_var(ncid, lon_varid, xlon) )
   call check( nf90_put_var(ncid, lvl_varid, msclev) )
 
   ! Write the data.
