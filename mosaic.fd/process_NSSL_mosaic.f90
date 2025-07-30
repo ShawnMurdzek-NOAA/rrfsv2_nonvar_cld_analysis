@@ -199,18 +199,20 @@ program process_NSSL_mosaic
 !
   meshfile='mesh.nc'
   call read_MPAS_nCell(meshfile, nCell)
-  write(6,*)
-  write(6,*) 'model nCell   =', nCell
   allocate(lat_m(nCell))
   allocate(lon_m(nCell))
   allocate(bdyMask(nCell))
   call read_MPAS_lat_lon(meshfile, nCell, lat_m, lon_m)
   call read_MPAS_bdyMaskCell(meshfile, nCell, bdyMask)
-  write(6,*) 'min model lat =', minval(lat_m)
-  write(6,*) 'min model lon =', minval(lon_m)
-  write(6,*) 'max model lat =', maxval(lat_m)
-  write(6,*) 'max model lon =', maxval(lon_m)
-  write(6,*)
+  if(mype==0) then
+    write(6,*)
+    write(6,*) 'model nCell   =', nCell
+    write(6,*) 'min model lat =', minval(lat_m)
+    write(6,*) 'min model lon =', minval(lon_m)
+    write(6,*) 'max model lat =', maxval(lat_m)
+    write(6,*) 'max model lon =', maxval(lon_m)
+    write(6,*)
+  endif
 
   allocate(ref3d(nCell,maxlvl))
   ref3d=-999.0

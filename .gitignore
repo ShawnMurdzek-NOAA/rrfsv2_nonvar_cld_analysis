@@ -10,6 +10,7 @@
 *.bufrtable
 *.bin
 *.grib2
+RefInGSI3D.dat
 prepbufr
 !fix/*.bufrtable
 
