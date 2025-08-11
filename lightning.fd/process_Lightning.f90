@@ -27,14 +27,14 @@ program process_Lightning
 !
   use mpi
   use kinds, only: r_kind,i_kind
-  use module_ncio, only : ncio
-  use module_esggrid_util, only: edp,esggrid_util
+  use mpasio, only: read_MPAS_nCell,read_MPAS_lat_lon
+
+! Modules from WPS
+  use map_utils
+  use misc_definitions_module
 
   implicit none
   INCLUDE 'netcdf.inc'
-!
-  type(ncio) :: rrfs
-  type(esggrid_util) :: esggrid
 !
 !
 ! MPI variables
@@ -42,14 +42,18 @@ program process_Lightning
 
 !
   character*256 output_file
-  CHARACTER*180 geofile
 
-! esg grid
-  real(edp)     :: dlat,dlon
-  real(edp)     :: xc,yc
-  integer(i_kind) :: nlonfv3,nlatfv3
-!  real,allocatable:: xlonfv3(:,:)    !
-!  real,allocatable:: ylatfv3(:,:)    !
+! Map projection
+  type(proj_info) :: proj
+  integer :: nlat, nlon
+  real :: lat1, lon1, truelat1, truelat2, stdlon, dx, knowni, knownj
+  real :: ll_lat, ur_lat, left_lat, bot_lat, right_lat, top_lat
+  real :: ll_lon, ur_lon, left_lon, bot_lon, right_lon, top_lon
+
+!  For MPAS mesh
+  integer(i_kind) :: nCell
+  real, allocatable :: lat_m(:),lon_m(:)
+  CHARACTER*180   meshfile
 
 !
 !  For lightning data
@@ -65,7 +69,7 @@ program process_Lightning
   real :: rtmp
   integer,allocatable:: lquality(:) !
 
-  real, allocatable :: lightning(:,:)   ! lightning  strakes
+  real, allocatable :: lightning(:)   ! lightning  strakes
   real(r_kind), allocatable :: lightning_out(:,:)   ! lightning  strakes
 
   integer :: numNLDN_all, numNLDN_used
@@ -76,21 +80,26 @@ program process_Lightning
 !
   character*10 :: analysis_time
   real :: trange_start,trange_end
-  integer :: minute
+  integer :: minute,debug
   character(len=20) :: obs_type
 
   integer      :: NLDN_filenum
   logical      :: IfAlaska
   character(len=20) :: grid_type
   namelist/setup/analysis_time,minute,trange_start,trange_end,&
-                 obs_type,grid_type,NLDN_filenum,IfAlaska
+                 obs_type,grid_type,NLDN_filenum,IfAlaska,debug
 !
 !  ** misc
       
   CHARACTER*180   workpath
 
-  integer i,j,igrid,jgrid,nt
+  integer, allocatable :: cell_id(:,:,:),lght_id(:,:,:),index_m(:,:),index_l(:,:)
+  real, allocatable :: x_m(:),y_m(:),x_l(:),y_l(:)
+  integer :: nCell_mp,nlght_mp
+  real :: rlon,rlat,xc,yc
+  integer i,j,ilght,nt,icell,c_id,l_id
   integer :: ii,jj
+  real :: d,d2
   integer :: NCID, istatus
   integer :: numlightning,idate,filenum
   logical :: ifexist
@@ -114,6 +123,7 @@ program process_Lightning
      minute=0
      obs_type="none"
      grid_type="none"
+     debug=0
      inquire(file='namelist.lightning', EXIST=ifexist )
      if(ifexist) then
         open(15, file='namelist.lightning')
@@ -124,29 +134,113 @@ program process_Lightning
         stop 123
      endif
 
-! define esg grid
-  
-     call esggrid%init(grid_type)
+!
+! define map projection (Lambert Conformal, similar to HRRR)
+!
+
+     lat1 = 38.5
+     lon1 = -97.5
+     truelat1 = 38.5
+     truelat2 = 38.5
+     stdlon = -97.5
+     dx = 3000.
+! HRRR grid
+!     nlat = 1060
+!     nlon = 1800
+! Slightly larger grid for MPAS
+     nlat = 1200
+     nlon = 2000
+     knowni = 0.5 * nlon - 1.
+     knownj = 0.5 * nlat - 1.
+
+     call map_set(PROJ_LC, &
+                  proj, &
+                  lat1=lat1, &
+                  lon1=lon1, &
+                  truelat1=truelat1, &
+                  truelat2=truelat2, &
+                  stdlon=stdlon, &
+                  dx=dx, &
+                  knowni=knowni, &
+                  knownj=knownj)
+
+! get corners of map projection
+
+     call ij_to_latlon(proj, 0., 0., ll_lat, ll_lon)
+     call ij_to_latlon(proj, real(nlon), real(nlat), ur_lat, ur_lon)
+     call ij_to_latlon(proj, 0., real(knowni), left_lat, left_lon)
+     call ij_to_latlon(proj, real(knownj), 0., bot_lat, bot_lon)
+     call ij_to_latlon(proj, real(nlon), knowni, right_lat, right_lon)
+     call ij_to_latlon(proj, real(knownj), real(nlat), top_lat, top_lon)
+
+     write(*,*)
+     write(*,*) 'map projection:'
+     write(*,*) 'llcrnr    =', ll_lat, ll_lon
+     write(*,*) 'urcrnr    =', ur_lat, ur_lon
+     write(*,*) 'left ctr  =', left_lat, left_lon
+     write(*,*) 'bot ctr   =', bot_lat, bot_lon
+     write(*,*) 'right ctr =', right_lat, right_lon
+     write(*,*) 'top ctr   =', top_lat, top_lon
 
 !
-! get domain dimension
+! get model domain dimension
 !
-     write(geofile,'(a,a)') './', 'fv3sar_grid_spec.nc'
-     call rrfs%open(trim(geofile),"r",200)
-     call rrfs%get_dim("grid_xt",nlonfv3)
-     call rrfs%get_dim("grid_yt",nlatfv3)
-     write(*,*) 'nx_rrfs,ny_rrfs=',nlonfv3,nlatfv3
-!     allocate(xlonfv3(nlonfv3,nlatfv3))
-!     allocate(ylatfv3(nlonfv3,nlatfv3))
-!     call rrfs%get_var("grid_lont",nlonfv3,nlatfv3,xlonfv3)
-!     call rrfs%get_var("grid_latt",nlonfv3,nlatfv3,ylatfv3)
-!     write(*,*) 'FV3SAR grid'
-!     write(*,*) 'nlonfv3,nlatfv3=', nlonfv3,nlatfv3
-!     write(*,*) 'max, min lon=', maxval(xlonfv3),minval(xlonfv3)
-!     write(*,*) 'max, min lat=', maxval(ylatfv3),minval(ylatfv3)
-     call rrfs%close()
+     meshfile='mesh.nc'
+     call read_MPAS_nCell(meshfile, nCell)
+     allocate(lat_m(nCell))
+     allocate(lon_m(nCell))
+     call read_MPAS_lat_lon(meshfile, nCell, lat_m, lon_m)
+     write(*,*)
+     write(*,*) 'model nCell   =', nCell
+     write(*,*) 'min model lat =', minval(lat_m)
+     write(*,*) 'min model lon =', minval(lon_m)
+     write(*,*) 'max model lat =', maxval(lat_m)
+     write(*,*) 'max model lon =', maxval(lon_m)
+     write(*,*)
 
-     allocate(lightning(nlonfv3,nlatfv3))
+!
+! Map each MPAS cell to the closest map projection integer coordinate
+!
+    nCell_mp=10
+    allocate(cell_id(nlon,nlat,nCell_mp))
+    allocate(index_m(nlon,nlat))
+    allocate(x_m(nCell_mp))
+    allocate(y_m(nCell_mp))
+    cell_id = -99
+    index_m = 0
+
+    do i=1,nCell
+      rlon=lon_m(i)
+      rlat=lat_m(i)
+      call latlon_to_ij(proj,rlat,rlon,xc,yc)
+      x_m(i) = xc
+      y_m(i) = yc
+      ic = int(xc+0.5)
+      jc = int(yc+0.5)
+      if ( (ic.ge.1 .and. ic.le.nlon) .and. &
+           (jc.ge.1 .and. jc.le.nlat) ) then
+        if ( index_m(ic,jc).lt.nCell_mp ) then
+          index_m(ic,jc) = index_m(ic,jc) + 1
+          cell_id(ic,jc,index_m(ic,jc)) = i
+        else
+          write(*,*)
+          write(*,*) 'ERROR: nCell_mp exceeded when mapping MPAS to the map projection. Please increase nCell_mp'
+          stop 
+        endif
+      endif
+    enddo 
+
+    if (debug.gt.0) then
+      write(*,*)
+      write(*,*) 'Max number of MPAS cells mapped to a single map projection point =', maxval(index_m)
+      write(*,*)
+    endif
+
+!
+! Read lightning observations
+!
+
+     allocate(lightning(nCell))
      lightning=0
 
      if(obs_type=="bufr") then
@@ -199,68 +293,130 @@ program process_Lightning
            call Check_NLDN(numStrike,llon,llat,ltime,lstrike,lquality)
         endif
 
+! -----------------------------------------------------------
+! -----------------------------------------------------------
+!     Map each lightning strike to the closest MPAS cell
+! -----------------------------------------------------------
+! -----------------------------------------------------------
+!
+        nlght_mp=2000
+        allocate(lght_id(nlon,nlat,nlght_mp))
+        allocate(index_l(nlon,nlat))
+        allocate(x_l(nlght_mp))
+        allocate(y_l(nlght_mp))
+        lght_id = -99
+        index_l = 0
+
         do i=1,numStrike
-
-           if(lquality(i) == 0 ) then
-              dlon=llon(i)
-              dlat=llat(i)
-              call esggrid%lltoxy(dlon,dlat,xc,yc)
-
-              igrid = int(XC+0.5)
-              jgrid = int(YC+0.5)
-              if( (igrid > 0 .and. igrid< nlonfv3).and.  &
-                  (jgrid > 0 .and. jgrid< nlatfv3)) then 
-                  lightning(igrid,jgrid) = lightning(igrid,jgrid) + 1
-                  numNLDN_used=numNLDN_used+1
+          if(lquality(i) == 0) then
+            rlon=llon(i)
+            rlat=llat(i)
+            call latlon_to_ij(proj,rlat,rlon,xc,yc)
+            x_l(i) = xc
+            y_l(i) = yc
+            ic = int(xc+0.5)
+            jc = int(yc+0.5)
+            if ( (ic.ge.1 .and. ic.le.nlon) .and. &
+                 (jc.ge.1 .and. jc.le.nlat) ) then
+              if ( index_l(ic,jc).lt.nlght_mp ) then
+                index_l(ic,jc) = index_l(ic,jc) + 1
+                lght_id(ic,jc,index_l(ic,jc)) = i
+              else
+                write(*,*)
+                write(*,*) 'WARNING: nlght_mp exceeded when mapping lightning to the map projection'
+                write(*,*) 'nlght_mp =', nlght_mp
+                write(*,*) 'map projection location =', ic, jc
               endif
-           endif ! lquality(i) == 0 
+            endif
+          endif
+        enddo
 
-       enddo
+        if (debug.gt.0) then
+          write(*,*)
+          write(*,*) 'Max number of lightning strikes mapped to a single map projection point =', maxval(index_l)
+          write(*,*)
+        endif
 
-       deallocate(llon)
-       deallocate(llat)
-       deallocate(ltime)
-       deallocate(lStrike)
-       deallocate(lquality)
+        deallocate(ltime)
+        deallocate(lStrike)
+        deallocate(lquality)
+
+!
+!  Use nearest-neighbor to interpolate lightning to MPAS mesh
+!
+        do i=1,nlon
+          do j=1,nlat
+            if (index_l(i,j).gt.0) then
+              do ilght=1,index_l(i,j)
+                d = 1.e9
+                nearest_id = -99
+                do ii=max(1,i-1), min(nlon,i+1)
+                  do jj=max(1,j-1), min(nlon,j+1)
+                    do icell=1,index_m(ii,jj)
+                      c_id = cell_id(ii,jj,icell)
+                      l_id = lght_id(ii,jj,ilght)
+                      d2 = ((x_m(c_id) - x_l(l_id))**2 + &
+                            (y_m(c_id) - y_l(l_id))**2)
+                      if (d2.lt.d) then
+                        nearest_id = c_id
+                      endif 
+                    enddo ! icell
+                  enddo ! jj
+                enddo ! ii
+                if (nearest_id.gt.0) then
+                  lightning(nearest_id) = lightning(nearest_id) + 1
+                  numNLDN_used=numNLDN_used+1
+                endif
+              enddo ! ilght
+            endif ! index_l > 0
+          enddo ! nlat
+        enddo ! nlon
+
+        deallocate(llon)
+        deallocate(llat)
+        deallocate(lght_id)
+        deallocate(index_l)
+        deallocate(x_l)
+        deallocate(y_l)
      enddo ! nt
 !
-     call esggrid%close()
+     deallocate(cell_id)
+     deallocate(index_m)
+     deallocate(x_m)
+     deallocate(y_m)
 !
 !  report statistic
 !
      write(*,*) ' The total number of lightning obs is:', numNLDN_all
      write(*,*) ' The number of obs used is:', numNLDN_used
 
-!  for FV3 LAM
+!  Write out results
 
-     allocate(lightning_out(4,nlonfv3*nlatfv3))
+     allocate(lightning_out(3,nCell))
      numlightning=0
-     do j=1,nlatfv3
-     do i=1,nlonfv3
-       if(lightning(i,j) > 0 ) then
+     do j=1,nCell
+       if(lightning(i) > 0 ) then
          numlightning=numlightning+1
          lightning_out(1,numlightning)=float(i)
-         lightning_out(2,numlightning)=float(j)
-         lightning_out(3,numlightning)=float(minute)/60.0
-         lightning_out(4,numlightning)=lightning(i,j)
+         lightning_out(2,numlightning)=float(minute)/60.0
+         lightning_out(3,numlightning)=lightning(i)
          if(lightning_out(4,numlightning) > 1000.0 ) then
             lightning_out(4,numlightning)=1000.0
-            write(6,*) 'high lightning strokes=',lightning(i,j),i,j
+            write(6,*) 'high lightning strokes=',lightning(i),i
          endif
 !        write(*,*) numlightning,i,j,lightning(i,j)
        endif
      enddo
-     enddo
 
-     write(*,*) 'Write out results for FV3 LAM:',numlightning
-     OPEN(10,file='LightningInFV3LAM.dat',form='unformatted')
-      write(10) 4,nlonfv3,nlatfv3,numlightning,1,2
-      write(10) ((real(lightning_out(i,j)),i=1,4),j=1,numlightning)
+     write(*,*) 'Write out results for MPAS:',numlightning
+     OPEN(10,file='LightningInMPAS.dat',form='unformatted')
+      write(10) 3,nCell,numlightning,1,2
+      write(10) ((real(lightning_out(i,j)),i=1,3),j=1,numlightning)
       write(10) lightning
      close(10)
 
      write(6,*) ' write lightning in BUFR for cycle time ',idate
-     call write_bufr_lightning(1,nlonfv3,nlatfv3,numlightning,lightning_out,idate)
+     call write_bufr_lightning(1,nCell,numlightning,lightning_out,idate)
      deallocate(lightning_out)
 
   endif ! mype

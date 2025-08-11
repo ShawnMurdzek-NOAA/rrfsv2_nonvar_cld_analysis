@@ -1,4 +1,4 @@
-  subroutine write_bufr_lightning(maxlvl,nlon,nlat,numref,lightning_out,idate)
+  subroutine write_bufr_lightning(maxlvl,nCell,numref,lightning_out,idate)
 !$$$  subprogram documentation block
 !                .      .    .                                       .
 ! subprogram:    write_bufr_lightning
@@ -32,7 +32,7 @@
     character(8) subset,sid
     integer(i_kind) :: ludx,lendian_in,idate
 
-    INTEGER(i_kind)  ::  maxlvl,nlon,nlat
+    INTEGER(i_kind)  ::  maxlvl,nCell
     INTEGER(i_kind)  ::  numlvl,numref
     INTEGER(i_kind)  ::  i,n,k,iret
 
@@ -50,13 +50,13 @@
     call openbf(lendian_in,'OUT',ludx)
     do n=1,numref
       hdr(1)=transfer(sid,hdr(1))
-      hdr(2)=lightning_out(1,n)/10.0_r_kind
-      hdr(3)=lightning_out(2,n)/10.0_r_kind
-      hdr(4)=lightning_out(3,n)
+      hdr(2)=lightning_out(1,n)/10.0_r_kind    ! XOB = MPAS Cell index. YOB = 0
+      hdr(3)=0/10.0_r_kind
+      hdr(4)=lightning_out(2,n)
       hdr(5)=500
 
       do k=1,maxlvl
-        obs(1,k)=lightning_out(3+k,n)
+        obs(1,k)=lightning_out(2+k,n)
       enddo
       call openmb(lendian_in,subset,idate)
       call ufbint(lendian_in,hdr,5,   1,iret,hdrstr)
