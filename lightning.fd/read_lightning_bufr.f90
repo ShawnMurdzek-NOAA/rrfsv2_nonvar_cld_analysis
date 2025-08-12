@@ -5,7 +5,6 @@ subroutine read_lightning_bufr  &
 ! read all observations out from prepbufr. 
 ! read bufr table from prepbufr file
 !
- use constants, only: r60inv
  use kinds, only: r_kind,i_kind
 
  implicit none

@@ -85,9 +85,8 @@ program process_Lightning
 
   integer      :: NLDN_filenum
   logical      :: IfAlaska
-  character(len=20) :: grid_type
   namelist/setup/analysis_time,minute,trange_start,trange_end,&
-                 obs_type,grid_type,NLDN_filenum,IfAlaska,debug
+                 obs_type,NLDN_filenum,IfAlaska,debug
 !
 !  ** misc
       
@@ -96,10 +95,8 @@ program process_Lightning
   integer, allocatable :: cell_id(:,:,:),lght_id(:,:,:),index_m(:,:),index_l(:,:)
   real, allocatable :: x_m(:),y_m(:),x_l(:),y_l(:)
   integer :: nCell_mp,nlght_mp
-  real :: rlon,rlat,xc,yc
-  integer i,j,ilght,nt,icell,c_id,l_id
-  integer :: ii,jj
-  real :: d,d2
+  real :: rlon,rlat,xc,yc,d,d2
+  integer i,j,ii,jj,ilght,nt,icell,c_id,l_id,ic,jc,nearest_id
   integer :: NCID, istatus
   integer :: numlightning,idate,filenum
   logical :: ifexist
@@ -122,7 +119,6 @@ program process_Lightning
      trange_end=0
      minute=0
      obs_type="none"
-     grid_type="none"
      debug=0
      inquire(file='namelist.lightning', EXIST=ifexist )
      if(ifexist) then
@@ -201,11 +197,11 @@ program process_Lightning
 !
 ! Map each MPAS cell to the closest map projection integer coordinate
 !
-    nCell_mp=10
+    nCell_mp=8
     allocate(cell_id(nlon,nlat,nCell_mp))
     allocate(index_m(nlon,nlat))
-    allocate(x_m(nCell_mp))
-    allocate(y_m(nCell_mp))
+    allocate(x_m(nCell))
+    allocate(y_m(nCell))
     cell_id = -99
     index_m = 0
 
@@ -224,7 +220,8 @@ program process_Lightning
           cell_id(ic,jc,index_m(ic,jc)) = i
         else
           write(*,*)
-          write(*,*) 'ERROR: nCell_mp exceeded when mapping MPAS to the map projection. Please increase nCell_mp'
+          write(*,*) 'ERROR: nCell_mp exceeded when mapping MPAS to the map projection.'
+          write(*,*) 'Please increase nCell_mp.'
           stop 
         endif
       endif
@@ -302,8 +299,8 @@ program process_Lightning
         nlght_mp=2000
         allocate(lght_id(nlon,nlat,nlght_mp))
         allocate(index_l(nlon,nlat))
-        allocate(x_l(nlght_mp))
-        allocate(y_l(nlght_mp))
+        allocate(x_l(numStrike))
+        allocate(y_l(numStrike))
         lght_id = -99
         index_l = 0
 
@@ -348,19 +345,21 @@ program process_Lightning
           do j=1,nlat
             if (index_l(i,j).gt.0) then
               do ilght=1,index_l(i,j)
+                l_id = lght_id(i,j,ilght)
                 d = 1.e9
                 nearest_id = -99
                 do ii=max(1,i-1), min(nlon,i+1)
                   do jj=max(1,j-1), min(nlon,j+1)
-                    do icell=1,index_m(ii,jj)
-                      c_id = cell_id(ii,jj,icell)
-                      l_id = lght_id(ii,jj,ilght)
-                      d2 = ((x_m(c_id) - x_l(l_id))**2 + &
-                            (y_m(c_id) - y_l(l_id))**2)
-                      if (d2.lt.d) then
-                        nearest_id = c_id
-                      endif 
-                    enddo ! icell
+                    if (index_m(ii,jj).gt.0) then
+                      do icell=1,index_m(ii,jj)
+                        c_id = cell_id(ii,jj,icell)
+                        d2 = ((x_m(c_id) - x_l(l_id))**2 + &
+                              (y_m(c_id) - y_l(l_id))**2)
+                        if (d2.lt.d) then
+                          nearest_id = c_id
+                        endif 
+                      enddo ! icell
+                    endif
                   enddo ! jj
                 enddo ! ii
                 if (nearest_id.gt.0) then
@@ -394,14 +393,14 @@ program process_Lightning
 
      allocate(lightning_out(3,nCell))
      numlightning=0
-     do j=1,nCell
+     do i=1,nCell
        if(lightning(i) > 0 ) then
          numlightning=numlightning+1
          lightning_out(1,numlightning)=float(i)
          lightning_out(2,numlightning)=float(minute)/60.0
          lightning_out(3,numlightning)=lightning(i)
-         if(lightning_out(4,numlightning) > 1000.0 ) then
-            lightning_out(4,numlightning)=1000.0
+         if(lightning_out(3,numlightning) > 1000.0 ) then
+            lightning_out(3,numlightning)=1000.0
             write(6,*) 'high lightning strokes=',lightning(i),i
          endif
 !        write(*,*) numlightning,i,j,lightning(i,j)

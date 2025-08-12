@@ -21,7 +21,7 @@
     use kinds, only: r_kind,i_kind
     implicit none
 
-    REAL(r_kind) :: lightning_out(maxlvl+3,nlon*nlat)   
+    REAL(r_kind) :: lightning_out(maxlvl+3,nCell)   
     real(r_kind) :: hdr(5),obs(1,35)
     character(80):: hdrstr='SID XOB YOB DHR TYP'
     character(80):: obsstr='POB'
