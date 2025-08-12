@@ -60,7 +60,7 @@ program process_Lightning
 !
   integer,parameter ::    max_numStrike=1000000
   integer ::    numStrike
-  character*180   lightsngle
+  character*180   lightsngle,lght_out_file
   real,allocatable:: llon(:)    !
   real,allocatable:: llat(:)    !
   integer,allocatable:: ltime(:)   !
@@ -290,6 +290,20 @@ program process_Lightning
            call Check_NLDN(numStrike,llon,llat,ltime,lstrike,lquality)
         endif
 
+!
+! DEBUGGING: Write out raw lightning obs
+!
+        if (debug > 0) then
+          write(lght_out_file,'(a,I1,a)') 'lightning_raw_',nt,'.txt'
+          open(12, file=lght_out_file, status="new", action="write")
+          write(12,'(5a12)') 'lat', 'lon', 'time', 'lstrike', 'quality'
+          do j=1,numStrike
+            write(12,'(2f12.3,3I12)') llat(j),llon(j),ltime(j),lstrike(j),lquality(j)
+          enddo
+          close(12)
+        endif
+
+
 ! -----------------------------------------------------------
 ! -----------------------------------------------------------
 !     Map each lightning strike to the closest MPAS cell
@@ -416,6 +430,20 @@ program process_Lightning
 
      write(6,*) ' write lightning in BUFR for cycle time ',idate
      call write_bufr_lightning(1,nCell,numlightning,lightning_out,idate)
+
+!
+! DEBUGGING: Write out interpolated lightning data to text file
+!
+     if (debug > 0) then
+       open(13, file="lightning_interp.txt", status="new", action="write")
+       write(13,'(4a12)') 'cell_id', 'lat', 'lon', 'nstrikes'
+       do j=1,numlightning
+          c_id = int(lightning_out(1,j))
+          write(13,'(I12,2f12.3,I12)') c_id,lat_m(c_id),lon_m(c_id),int(lightning_out(3,j))
+       enddo
+       close(13)
+     endif
+
      deallocate(lightning_out)
 
   endif ! mype

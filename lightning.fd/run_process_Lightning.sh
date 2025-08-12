@@ -48,12 +48,13 @@ cat << EOF > namelist.lightning
 EOF
 
 # Clean old text files
-#clean_files=( 'Gridded_ref.nc' 'RefInGSI3D.dat' )
-#for f in ${clean_files[@]}; do
-#  if [[ -f ${f} ]]; then
-#    rm ${f}
-#  fi
-#done
+clean_files=( 'LightningInGSI_bufr.bufr' 'LightningInMPAS.dat' 
+              'lightning_interp.txt' 'lightning_raw_1.txt' )
+for f in ${clean_files[@]}; do
+  if [[ -f ${f} ]]; then
+    rm ${f}
+  fi
+done
 
 # Run program
 date

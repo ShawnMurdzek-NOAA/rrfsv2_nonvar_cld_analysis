@@ -16,7 +16,7 @@ echo 'Building Program...'
 compiler=mpiifort
 
 # diag-disable flag disables a warning about how ifort is deprecated
-flags='-diag-disable=10448 -traceback -g -check all'
+flags='-diag-disable=10448 -traceback -g'
 ${compiler} -c ${flags} kinds.f90
 ${compiler} -c ${flags} mpasio.f90 -I ${netcdf_fortran_ROOT}/include
 ${compiler} -c ${flags} read_lightning_bufr.f90
