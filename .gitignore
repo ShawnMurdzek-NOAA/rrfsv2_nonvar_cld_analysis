@@ -3,6 +3,7 @@
 *.o
 *.exe
 *.mod
+*genmod.f90
 
 # Data files
 *.nc
@@ -10,7 +11,9 @@
 *.bufrtable
 *.bin
 *.grib2
+*bufr
 RefInGSI3D.dat
+LightningInMPAS.dat
 prepbufr
 !fix/*.bufrtable
 
@@ -20,6 +23,7 @@ metarcld.fd/namelist.metarcld
 mosaic.fd/namelist.mosaic
 mosaic.fd/namelist.mosaic_netcdf
 mosaic.fd/filelist_mrms
+lightning.fd/namelist.lightning
 
 # Other
 *.swp
