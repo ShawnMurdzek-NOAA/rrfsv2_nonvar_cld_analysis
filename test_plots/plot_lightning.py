@@ -18,6 +18,7 @@ import sys
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import datetime as dt
@@ -60,10 +61,12 @@ print()
 # Open file with raw lightning obs
 df_raw = pd.read_csv(in_raw, sep="\s+")
 df_raw = df_raw.loc[df_raw['quality'] == 0, :]
-df_raw['nstrikes'] = np.ones(len(df_raw))
+df_raw['nstrikes'] = np.ones(len(df_raw), dtype=int)
+df_raw.sort_values('nstrikes', inplace=True)
 
 # Open file with interpolated lightning obs
 df_interp = pd.read_csv(in_interp, sep="\s+")
+df_interp.sort_values('nstrikes', inplace=True)
 
 # Create state borders
 borders = cfeature.NaturalEarthFeature(category='cultural',
@@ -91,12 +94,13 @@ for i, (label, df) in enumerate(zip(['raw obs', 'interpolated to MPAS'], [df_raw
     
     # Plot lightning locations with a scatter plot
     cax = plt.scatter(df['lon'], df['lat'], c=df['nstrikes'], transform=ccrs.PlateCarree(),
-                      cmap='plasma', vmin=0, vmax=100, s=3, alpha=1)
+                      cmap='plasma', s=0.5, alpha=1,
+                      norm=matplotlib.colors.LogNorm(vmin=1, vmax=200))
 
     cbar = plt.colorbar(cax, ax=ax, orientation='horizontal', aspect=30, pad=0.05)
     cbar.set_label('number of lightning strikes', size=14)
 
-    ax.set_title(label, size=16)
+    ax.set_title(f"{label} (n = {df['nstrikes'].sum()})", size=16)
     ax.set_extent([minlon, maxlon, minlat, maxlat])
     ax.coastlines('50m', linewidth=1, edgecolor='k')
     ax.add_feature(borders, linewidth=0.75, edgecolor='gray')
