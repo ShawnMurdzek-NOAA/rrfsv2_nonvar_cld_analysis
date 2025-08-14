@@ -5,6 +5,14 @@ subroutine read_lightning_bufr  &
 ! read all observations out from prepbufr. 
 ! read bufr table from prepbufr file
 !
+! Description of BUFR fields can be found here: 
+! https://www.nco.ncep.noaa.gov/sib/jeff/bufrtab_tableb.html
+!
+! AMPLS : Amplitude of lightning strike (A)
+! PLRTS : Lightning discharge polarity
+! OWEP  : Other weather phenomena
+! NOFL  : Number of flashes
+!
  use kinds, only: r_kind,i_kind
 
  implicit none
