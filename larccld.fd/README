@@ -1,5 +1,5 @@
 
-To compile: bash build_larccld.sh
+To compile: source ../env/ursa.env && make clean && make
 
 To run: sbatch run_process_NASA_LaRC.sh
 
