@@ -65,6 +65,12 @@ if domain == 'iowa':
     maxlat = 45
     maxlon = -88
     markersize = 3
+elif domain == 'NA':
+    minlat = 0
+    minlon = -167
+    maxlat = 75
+    maxlon = -47
+    markersize = 0.1
 elif domain != 'full':
     print(f"invalid domain {domain}, switching to full")
 
