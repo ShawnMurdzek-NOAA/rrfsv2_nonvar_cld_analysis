@@ -6,6 +6,7 @@ Passed Arguments
 sys.argv[1] : Text file with raw lightning obs
 sys.argv[2] : Text file with interpolated lightning obs
 sys.argv[3] : Domain name
+sys.argv[4] : Plot type ('scatter' or 'hist')
 
 shawn.s.murdzek@noaa.gov
 """
@@ -39,14 +40,25 @@ minlon = -135
 maxlat = 55
 maxlon = -60
 markersize = 0.1
+delta = 0.25
 if domain == 'iowa':
     minlat = 39
     minlon = -98
     maxlat = 45
     maxlon = -88
     markersize = 3
+elif domain == 'KYTN':
+    minlat = 36
+    minlon = -87
+    maxlat = 37
+    maxlon = -85
+    markersize = 5
+    delta = 0.06
 elif domain != 'full':
     print(f"invalid domain {domain}, switching to full")
+
+# Plot type
+plot_type = sys.argv[4]
 
 
 #---------------------------------------------------------------------------------------------------
@@ -74,28 +86,31 @@ borders = cfeature.NaturalEarthFeature(category='cultural',
                                        facecolor='none',
                                        name='admin_1_states_provinces')
 
-# Determine bin edges for 2D histogram
-#delta = 0.25
-#xbin = np.arange(minlon, maxlon + 2*delta, delta)
-#ybin = np.arange(minlat, maxlat + 2*delta, delta)
-
 # Plot data
 fig = plt.figure(figsize=(8, 10))
 for i, (label, df) in enumerate(zip(['raw obs', 'interpolated to MPAS'], [df_raw, df_interp])):
     print(f"Plotting {label} (nlightning strikes = {df['nstrikes'].sum()})")
     ax = fig.add_subplot(2, 1, i+1, projection=ccrs.LambertConformal())
 
-    # Create 2D histogram for lightning strikes
-    #v, x, y = np.histogram2d(df['lon'], df['lat'], bins=[xbin, ybin], weights=df['nstrikes'])
-    #v[np.isclose(v, 0)] = np.nan
+    if plot_type == 'hist':
+        # Create 2D histogram for lightning strikes
+        xbin = np.arange(minlon, maxlon + 2*delta, delta)
+        ybin = np.arange(minlat, maxlat + 2*delta, delta)
+        v, x, y = np.histogram2d(df['lon'], df['lat'], bins=[xbin, ybin], weights=df['nstrikes'])
+        v[np.isclose(v, 0)] = np.nan
 
-    #cax = ax.pcolormesh(x, y, v.T, transform=ccrs.PlateCarree(),
-    #                    cmap='plasma', vmin=0, vmax=4000)
+        cax = ax.pcolormesh(x, y, v.T, transform=ccrs.PlateCarree(),
+                            cmap='plasma', 
+                            norm=matplotlib.colors.LogNorm(vmin=1, vmax=2000))
     
-    # Plot lightning locations with a scatter plot
-    cax = plt.scatter(df['lon'], df['lat'], c=df['nstrikes'], transform=ccrs.PlateCarree(),
-                      cmap='plasma', s=0.5, alpha=1,
-                      norm=matplotlib.colors.LogNorm(vmin=1, vmax=200))
+    elif plot_type == 'scatter':
+        # Plot lightning locations with a scatter plot
+        cax = plt.scatter(df['lon'], df['lat'], c=df['nstrikes'], transform=ccrs.PlateCarree(),
+                        cmap='plasma', s=markersize, alpha=1,
+                        norm=matplotlib.colors.LogNorm(vmin=1, vmax=200))
+    
+    else:
+        raise ValueError(f"plot_type {plot_type} is not a valid option")
 
     cbar = plt.colorbar(cax, ax=ax, orientation='horizontal', aspect=30, pad=0.05)
     cbar.set_label('number of lightning strikes', size=14)
@@ -106,7 +121,7 @@ for i, (label, df) in enumerate(zip(['raw obs', 'interpolated to MPAS'], [df_raw
     ax.add_feature(borders, linewidth=0.75, edgecolor='gray')
 
 plt.subplots_adjust(left=0.05, bottom=0.07, right=0.95, top=0.93, hspace=0.25)
-plt.savefig(f"lightning_strikes_{domain}.png")
+plt.savefig(f"lightning_strikes_{domain}_{plot_type}.png")
 plt.close()
 
 print()
