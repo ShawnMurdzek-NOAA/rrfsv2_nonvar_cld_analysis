@@ -371,6 +371,7 @@ program process_Lightning
                               (y_m(c_id) - y_l(l_id))**2)
                         if (d2.lt.d) then
                           nearest_id = c_id
+                          d = d2
                         endif 
                       enddo ! icell
                     endif

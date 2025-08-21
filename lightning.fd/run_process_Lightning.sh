@@ -17,7 +17,7 @@ mpas_mesh_file="/scratch4/BMC/wrfruc/murdzek/nonvar_cld_analysis_testing/RRFSv2/
 valid=2024050813
 
 
-# Run Program
+# Build Program
 # =========================
 
 # Load environment
@@ -25,6 +25,14 @@ echo "Configuring environment"
 source ${env_dir}/${machine}.env
 module list
 echo
+
+# Build program
+make clean
+make
+
+
+# Run Program
+# =========================
 
 #ulimit -s unlimited
 #ulimit -a
