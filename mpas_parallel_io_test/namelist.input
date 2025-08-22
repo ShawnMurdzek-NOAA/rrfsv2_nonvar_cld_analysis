@@ -1,0 +1,5 @@
+ &setup
+  use_mpi=2,
+  fname=mpas_atm.nc
+ /
+
