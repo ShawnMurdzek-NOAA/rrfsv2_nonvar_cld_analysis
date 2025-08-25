@@ -54,8 +54,8 @@ subroutine init_cld_parm
   metar_impact_radius_min        = 20000.0_r_kind   ! in meter
   metar_impact_radius_max_height = 3000.0_r_kind    ! in meter
   metar_impact_radius_min_height = 200.0_r_kind     ! in meter
-  region_dy=3000.0
-  region_dx=3000.0
+  region_dy=3500.0
+  region_dx=3500.0
 
 end subroutine init_cld_parm
 

@@ -13,7 +13,7 @@ machine='ursa'
 env_dir='../env/'
 fix_dir='../fix/'
 obs_dir="/scratch4/BMC/wrfruc/murdzek/nonvar_cld_analysis_testing/RRFSv2/test_data/obs"
-mpas_mesh_file="/scratch4/BMC/wrfruc/murdzek/nonvar_cld_analysis_testing/RRFSv2/test_data/conus3km.grid.nc"
+mpas_mesh_file="/scratch4/BMC/wrfruc/murdzek/nonvar_cld_analysis_testing/RRFSv2/test_data/mpas_south_3.5km.grid.nc"
 valid=2024050813
 
 
@@ -40,7 +40,7 @@ cat << EOF > namelist.metarcld
   analysis_time = ${valid},
   prepbufrfile='prepbufr'
   twindin=0.5,
-  metar_impact_radius=20,
+  metar_impact_radius=17,
   debug=1,
  /
 EOF

@@ -54,6 +54,13 @@ elif domain == 'KYTN':
     maxlon = -85
     markersize = 5
     delta = 0.06
+elif domain == 'south':
+    minlat = 25
+    minlon = -105
+    maxlat = 42
+    maxlon = -79
+    markersize = 1
+    delta = 0.125
 elif domain != 'full':
     print(f"invalid domain {domain}, switching to full")
 
