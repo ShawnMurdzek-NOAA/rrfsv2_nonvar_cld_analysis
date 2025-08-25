@@ -1,7 +1,7 @@
 #!/bin/sh
 
 #SBATCH -A wrfruc
-#SBATCH -t 00:10:00
+#SBATCH -t 00:30:00
 #SBATCH --ntasks=8
 
 # Script to run read_mpas.exe
@@ -10,7 +10,8 @@
 # ================
 machine='ursa'
 env_dir='../env/'
-mpas_file="/scratch4/BMC/wrfruc/murdzek/nonvar_cld_analysis_testing/RRFSv2/test_data/mpas_south3.5km/mpasout.2024-05-08_13.00.00.nc"
+#mpas_file="/scratch4/BMC/wrfruc/murdzek/nonvar_cld_analysis_testing/RRFSv2/test_data/mpas_south3.5km/mpasout.2024-05-08_13.00.00.nc"
+mpas_file="/scratch4/BMC/wrfruc/murdzek/nonvar_cld_analysis_testing/RRFSv2/test_data/mpas_conus3km/hrrrv5.history.2025-08-24_13.00.00.nc"
 
 
 # Build Program
@@ -34,17 +35,23 @@ make
 cp ${mpas_file} ./mpas_atm.nc
 
 # Run program a few different ways
+for i in $(seq 0 5); do
+
+echo "////////////////////////////////////////////////////////////"
+echo "Iteration ${i}"
+echo
+
 diff=()
-for i in $(seq 0 2); do
+exp=()
+for j in $(seq -1 2); do
 
 echo
 echo "============================================================"
-echo "use_mpi = ${i}"
-echo
+echo "use_mpi = ${j}"
 
 cat << EOF > namelist.input
  &setup
-  use_mpi=${i},
+  use_mpi=${j},
   fname=mpas_atm.nc
  /
 
@@ -54,13 +61,16 @@ s=$(date +%s%N)
 srun --export=ALL read_mpas.exe
 e=$(date +%s%N)
 diff+=($((e-s)))
+exp+=(${j})
 
 done
 
 # Results
 echo
 echo "============================================================"
-for i in "${!diff[@]}"; do
-  echo "Elapsed time for use_mpi ${i} = ${diff[i]} ns"
+for j in "${!diff[@]}"; do
+  echo "Elapsed time for use_mpi ${exp[j]} = ${diff[j]} ns"
 done
 echo
+
+done
