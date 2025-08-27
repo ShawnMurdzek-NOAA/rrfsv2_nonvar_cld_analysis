@@ -10,8 +10,8 @@
 # ================
 machine='ursa'
 env_dir='../env/'
-#mpas_file="/scratch4/BMC/wrfruc/murdzek/nonvar_cld_analysis_testing/RRFSv2/test_data/mpas_south3.5km/mpasout.2024-05-08_13.00.00.nc"
-mpas_file="/scratch4/BMC/wrfruc/murdzek/nonvar_cld_analysis_testing/RRFSv2/test_data/mpas_conus3km/hrrrv5.history.2025-08-24_13.00.00.nc"
+#mpas_file="../../test_data/mpas_south3.5km/mpasout.2024-05-08_13.00.00.nc"
+mpas_file="../../test_data/mpas_conus3km/hrrrv5.history.2025-08-24_13.00.00.nc"
 
 
 # Build Program

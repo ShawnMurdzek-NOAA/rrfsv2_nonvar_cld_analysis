@@ -1,6 +1,7 @@
 #!/bin/sh
 
-#SBATCH -A wrfruc
+#SBATCH -M c6
+#SBATCH -A bil-pmp
 #SBATCH -t 00:30:00
 #SBATCH --ntasks=48
 #SBATCH --nodes=2
@@ -9,11 +10,11 @@
 
 # Input Parameters
 # ================
-machine='ursa'
+machine='gaeaC6'
 env_dir='../env/'
 fix_dir='../fix/'
-obs_dir="/scratch4/BMC/wrfruc/murdzek/nonvar_cld_analysis_testing/RRFSv2/test_data/obs"
-mpas_mesh_file="/scratch4/BMC/wrfruc/murdzek/nonvar_cld_analysis_testing/RRFSv2/test_data/mpas_south_3.5km.grid.nc"
+obs_dir="../../test_data/obs"
+mpas_mesh_file="../../test_data/mpas_south_3.5km.grid.nc"
 valid=2024050813
 
 

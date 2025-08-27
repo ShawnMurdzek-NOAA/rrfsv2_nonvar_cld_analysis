@@ -1,7 +1,6 @@
 
 # Compiler settings
 # diag-disable=10448 flag is needed to disable warning about how ifort is deprecated
-FC=mpiifort
 FFLAGS=-diag-disable=10448 -traceback
 
 # Components of program
