@@ -4,10 +4,7 @@
 FFLAGS=-diag-disable=10448 -traceback
 
 # Components of program
-SRC=kinds.f90 \
-    constants.f90 \
-    mpasio.f90 \
-    netCDFsub.f90 \
+SRC=netCDFsub.f90 \
     read_ncep_binary.f90 \
     read_nssl_binary.f90 \
     read_grib2_mod.f90 \
@@ -18,10 +15,12 @@ SRC=kinds.f90 \
 OBJ=${SRC:.f90=.o}
 
 # Program dependencies
-map_util_dir=../wps_map_utils
+map_util_dir=../share/wps_map_utils
+share_dir=../share
 INCLD=-I${netcdf_fortran_ROOT}/include \
       -I${g2_ROOT}/include_4 \
-      -I$(map_util_dir)
+      -I$(map_util_dir) \
+      -I$(share_dir)
 LIBS=-L${netcdf_fortran_ROOT}/lib -lnetcdff \
      -L${jasper_ROOT}/lib64 -ljasper \
      -L${libpng_ROOT}/lib -lpng \
@@ -31,6 +30,9 @@ LIBS=-L${netcdf_fortran_ROOT}/lib -lnetcdff \
      -L${g2_ROOT}/lib64 -lg2_4
 MAP=$(map_util_dir)/misc_definitions_module.o \
     $(map_util_dir)/module_map_utils.o
+SHARE=$(share_dir)/kinds.o \
+      $(share_dir)/constants.o \
+      $(share_dir)/mpasio.o
 
 # Compile individual f90 files
 %.o: %.f90
@@ -38,7 +40,7 @@ MAP=$(map_util_dir)/misc_definitions_module.o \
 
 # Linking to create final exe
 process_NSSL_mosaic.exe: $(OBJ)
-	$(FC) $(FFLAGS) -o $@ $(OBJ) $(MAP) $(LIBS)
+	$(FC) $(FFLAGS) -o $@ $(OBJ) $(MAP) $(SHARE) $(LIBS)
 
 clean:
 	rm -f *.o *.mod process_NSSL_mosaic.exe 

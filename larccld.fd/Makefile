@@ -4,22 +4,24 @@
 FFLAGS=-diag-disable=10448 -traceback
 
 # Components of program
-SRC=kinds.f90 \
-    constants.f90 \
-    mpasio.f90 \
-    read_NASALaRC_cloud.f90 \
+SRC=read_NASALaRC_cloud.f90 \
     write_bufr_NASALaRC.f90 \
     process_NASALaRC_cloud.f90
 OBJ=${SRC:.f90=.o}
 
 # Program dependencies
-map_util_dir=../wps_map_utils
+map_util_dir=../share/wps_map_utils
+share_dir=../share
 INCLD=-I${netcdf_fortran_ROOT}/include \
-      -I$(map_util_dir)
+      -I$(map_util_dir) \
+      -I$(share_dir)
 LIBS=-L${netcdf_fortran_ROOT}/lib -lnetcdff \
      -L${bufr_ROOT}/lib64 -lbufr_4
 MAP=$(map_util_dir)/misc_definitions_module.o \
     $(map_util_dir)/module_map_utils.o
+SHARE=$(share_dir)/kinds.o \
+      $(share_dir)/constants.o \
+      $(share_dir)/mpasio.o
 
 # Compile individual f90 files
 %.o: %.f90
@@ -27,7 +29,7 @@ MAP=$(map_util_dir)/misc_definitions_module.o \
 
 # Linking to create final exe
 process_larccld.exe: $(OBJ)
-	$(FC) $(FFLAGS) -o $@ $(OBJ) $(MAP) $(LIBS)
+	$(FC) $(FFLAGS) -o $@ $(OBJ) $(MAP) $(SHARE) $(LIBS)
 
 clean:
 	rm -f *.o *.mod process_larccld.exe 

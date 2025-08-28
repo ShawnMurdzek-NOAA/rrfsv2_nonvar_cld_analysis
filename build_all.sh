@@ -11,7 +11,8 @@ source ./env/${machine}.env
 module list
 echo
 
-programs=( wps_map_utils
+programs=( share/wps_map_utils
+	   share
 	   larccld.fd
 	   lightning.fd
 	   metarcld.fd
