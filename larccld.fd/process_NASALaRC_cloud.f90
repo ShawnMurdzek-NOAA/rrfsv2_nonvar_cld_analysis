@@ -27,7 +27,7 @@ program  process_NASALaRC_cloud
 !
   use mpi
   use kinds, only: r_kind,i_kind,r_single
-  use mpasio, only: read_MPAS_nCell,read_MPAS_lat_lon
+  use mpasio, only: read_MPAS_dim,read_MPAS_lat_lon
 
   ! Modules from WPS
   use map_utils
@@ -60,6 +60,7 @@ program  process_NASALaRC_cloud
   REAL(r_single), allocatable :: lat_m(:)
   REAL(r_single), allocatable :: lon_m(:)
   CHARACTER*180   meshfile
+  CHARACTER*50    mpasfield
 !
 !  For NASA LaRC 
 !
@@ -230,7 +231,8 @@ program  process_NASALaRC_cloud
 !
 
      meshfile='mesh.nc'
-     call read_MPAS_nCell(meshfile, nCell)
+     mpasfield='nCells'
+     call read_MPAS_dim(meshfile, mpasfield, nCell)
      write(6,*)
      write(6,*) 'model nCell   =', nCell
      allocate(lat_m(nCell))

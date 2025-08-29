@@ -27,7 +27,7 @@ program process_Lightning
 !
   use mpi
   use kinds, only: r_kind,i_kind
-  use mpasio, only: read_MPAS_nCell,read_MPAS_lat_lon
+  use mpasio, only: read_MPAS_dim,read_MPAS_lat_lon
 
 ! Modules from WPS
   use map_utils
@@ -54,6 +54,7 @@ program process_Lightning
   integer(i_kind) :: nCell
   real, allocatable :: lat_m(:),lon_m(:)
   CHARACTER*180   meshfile
+  CHARACTER*50    mpasfield
 
 !
 !  For lightning data
@@ -182,7 +183,8 @@ program process_Lightning
 ! get model domain dimension
 !
      meshfile='mesh.nc'
-     call read_MPAS_nCell(meshfile, nCell)
+     mpasfield='nCells'
+     call read_MPAS_dim(meshfile, mpasfield, nCell)
      allocate(lat_m(nCell))
      allocate(lon_m(nCell))
      call read_MPAS_lat_lon(meshfile, nCell, lat_m, lon_m)

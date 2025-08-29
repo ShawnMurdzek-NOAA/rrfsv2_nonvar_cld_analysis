@@ -33,7 +33,7 @@ program process_NSSL_mosaic
   use mpi
   use kinds, only: r_kind,i_kind
   use module_read_NSSL_refmosaic, only: read_nsslref
-  use mpasio, only: read_MPAS_nCell,read_MPAS_lat_lon,read_MPAS_bdyMaskCell
+  use mpasio, only: read_MPAS_dim,read_MPAS_lat_lon,read_MPAS_1D_int
 
   implicit none
 !
@@ -57,6 +57,7 @@ program process_NSSL_mosaic
   real, allocatable :: lat_m(:),lon_m(:)
   integer, allocatable :: bdyMask(:)
   CHARACTER*180   meshfile
+  CHARACTER*50    mpasfield
 !
 !  namelist files
 !
@@ -222,13 +223,15 @@ program process_NSSL_mosaic
 ! get model domain dimension
 !
   meshfile='mesh.nc'
-  call read_MPAS_nCell(meshfile, nCell)
+  mpasfield='nCells'
+  call read_MPAS_dim(meshfile, mpasfield, nCell)
   allocate(lat_m(nCell))
   allocate(lon_m(nCell))
   call read_MPAS_lat_lon(meshfile, nCell, lat_m, lon_m)
   if (remove_bdy) then
     allocate(bdyMask(nCell))
-    call read_MPAS_bdyMaskCell(meshfile, nCell, bdyMask)
+    mpasfield='bdyMaskCell'
+    call read_MPAS_1D_int(meshfile, nCell, mpasfield, bdyMask)
   endif
   if(mype==0) then
     write(6,*)

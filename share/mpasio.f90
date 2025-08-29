@@ -1,47 +1,85 @@
 module mpasio
 
+use netcdf
+
 contains
 
-subroutine read_MPAS_nCell(mpasfile, nCell)
+subroutine handle_nc_error(stat, name)
 !---------------------------------------------------------------------------------------------------
 !
-! Determine the number of MPAS cells ina file
+! Handle errors from netCDF-fortran library by taking the error code and printing a human-readable
+! error message
+!
+! Inputs
+!   stat : integer
+!     Error code from netCDF-fortran function
+!   name : string 
+!     Name of subroutine where error occurred
+!
+!
+! shawn.s.murdzek@noaa.gov
+!---------------------------------------------------------------------------------------------------
+
+  implicit none
+
+  integer, intent(in) :: stat
+  character(len=50), intent(in) :: name
+
+  if (stat /= nf90_noerr) then
+    write(*,*) 'ERROR in ', trim(name)
+    write(*,*) trim(nf90_strerror(stat))
+    stop stat
+  endif
+
+end subroutine handle_nc_error
+
+subroutine read_MPAS_dim(mpasfile, namedim, ndim)
+!---------------------------------------------------------------------------------------------------
+!
+! Determine the length of a dimension from an MPAS netCDF file
 !
 ! Inputs
 !   mpasfile : string
 !     MPAS netCDF file name
+!   namedim : string
+!     Dimension name
 !
 ! Outputs
-!   nCell : integer
-!     Number of cells
+!   ndim : integer
+!     Dimension length
 ! 
 !
 ! shawn.s.murdzek@noaa.gov
 !---------------------------------------------------------------------------------------------------
 
-  use netcdf
-
   implicit none
 
   character(len=100), intent(in) :: mpasfile
-  integer, intent(out) :: nCell
+  character(len=50), intent(in) :: namedim
+  integer, intent(out) :: ndim
 
-  integer :: ncid, stat, cellid
-  character(len=50) :: cellname
+  integer :: ncid, stat, dimid
+  character(len=50) :: tmpname,routine_name
+
+  routine_name = 'read_MPAS_dim'
 
   stat = nf90_open(mpasfile, nf90_nowrite, ncid)
+  call handle_nc_error(stat, routine_name)
 
-  stat = nf90_inq_dimid(ncid, 'nCells', cellid)
-  stat = nf90_inquire_dimension(ncid, cellid, cellname, nCell)
+  stat = nf90_inq_dimid(ncid, trim(namedim), dimid)
+  call handle_nc_error(stat, routine_name)
+  stat = nf90_inquire_dimension(ncid, dimid, tmpname, ndim)
+  call handle_nc_error(stat, routine_name)
 
   stat = nf90_close(ncid)
+  call handle_nc_error(stat, routine_name)
 
-end subroutine read_MPAS_nCell
+end subroutine read_MPAS_dim
 
 subroutine read_MPAS_lat_lon(mpasfile, nCell, lat, lon)
 !---------------------------------------------------------------------------------------------------
 !
-! Read in (lat, lon) coordinates for MPAS mesh grid cells
+! Read in (lat, lon) coordinates for MPAS mesh grid cells from a grid.nc file
 !
 ! Inputs
 !   mpasfile : string
@@ -59,8 +97,6 @@ subroutine read_MPAS_lat_lon(mpasfile, nCell, lat, lon)
 ! shawn.s.murdzek@noaa.gov
 !---------------------------------------------------------------------------------------------------
 
-  use netcdf
-
   implicit none
 
   character(len=100), intent(in) :: mpasfile
@@ -69,14 +105,22 @@ subroutine read_MPAS_lat_lon(mpasfile, nCell, lat, lon)
 
   integer :: ncid, stat, latid, lonid, i
   real, parameter :: pi=3.1415927
+  character(len=50)  :: routine_name
+
+  routine_name = 'read_MPAS_lat_lon'
 
   stat = nf90_open(mpasfile, nf90_nowrite, ncid)
+  call handle_nc_error(stat, routine_name)
 
   stat = nf90_inq_varid(ncid, 'latCell', latid)
+  call handle_nc_error(stat, routine_name)
   stat = nf90_inq_varid(ncid, 'lonCell', lonid)
+  call handle_nc_error(stat, routine_name)
 
   stat = nf90_get_var(ncid, latid, lat)
+  call handle_nc_error(stat, routine_name)
   stat = nf90_get_var(ncid, lonid, lon)
+  call handle_nc_error(stat, routine_name)
 
   lat = lat * 180 / pi
   lon = lon * 180 / pi
@@ -89,43 +133,140 @@ subroutine read_MPAS_lat_lon(mpasfile, nCell, lat, lon)
   enddo
 
   stat = nf90_close(ncid)
+  call handle_nc_error(stat, routine_name)
 
 end subroutine read_MPAS_lat_lon
 
-subroutine read_MPAS_bdyMaskCell(mpasfile, nCell, bdyMask)
+subroutine read_MPAS_1D_int(mpasfile, ndim, field, data)
 !---------------------------------------------------------------------------------------------------
 !
-! Read in bdyMaskCell field from a MPAS mash file
+! Read in 1D integer field from an MPAS netCDF file
 !
 ! Inputs
 !   mpasfile : string
 !     MPAS netCDF file name
-!   nCell : integer
-!     Number of mesh cells
+!   ndim : integer
+!     Length of the one dimension
+!   field : string
+!     1D integer field to read
 !
 ! Outputs
-!   bdyMask : integer
-!     bdyMaskCell field
+!   data : integer
+!     Integer field
 ! 
 !
 ! shawn.s.murdzek@noaa.gov
 !---------------------------------------------------------------------------------------------------
 
-  use netcdf
+  implicit none
+
+  character(len=100), intent(in) :: mpasfile
+  integer, intent(in) :: ndim
+  character(len=50), intent(in) :: field
+  integer, intent(out) :: data(ndim)
+
+  integer :: ncid, stat, fieldid
+  character(len=50) :: routine_name
+
+  routine_name = 'read_MPAS_1D_int'
+
+  stat = nf90_open(mpasfile, nf90_nowrite, ncid)
+  call handle_nc_error(stat, routine_name)
+  stat = nf90_inq_varid(ncid, field, fieldid)
+  call handle_nc_error(stat, routine_name)
+  stat = nf90_get_var(ncid, fieldid, data)
+  call handle_nc_error(stat, routine_name)
+  stat = nf90_close(ncid)
+  call handle_nc_error(stat, routine_name)
+
+end subroutine read_MPAS_1D_int
+
+subroutine read_MPAS_1D_real(mpasfile, ndim, field, data)
+!---------------------------------------------------------------------------------------------------
+!
+! Read in 1D real field from an MPAS netCDF file
+!
+! Inputs
+!   mpasfile : string
+!     MPAS netCDF file name
+!   ndim : integer
+!     Length of the one dimension
+!   field : string
+!     1D real field to read
+!
+! Outputs
+!   data : real
+!     Real field
+! 
+!
+! shawn.s.murdzek@noaa.gov
+!---------------------------------------------------------------------------------------------------
 
   implicit none
 
   character(len=100), intent(in) :: mpasfile
-  integer, intent(in) :: nCell
-  integer, intent(out) :: bdyMask(nCell)
+  integer, intent(in) :: ndim
+  character(len=50), intent(in) :: field
+  real, intent(out) :: data(ndim)
 
-  integer :: ncid, stat, bdyid
+  integer :: ncid, stat, fieldid
+  character(len=50) :: routine_name
+
+  routine_name = 'read_MPAS_1D_real'
 
   stat = nf90_open(mpasfile, nf90_nowrite, ncid)
-  stat = nf90_inq_varid(ncid, 'bdyMaskCell', bdyid)
-  stat = nf90_get_var(ncid, bdyid, bdyMask)
+  call handle_nc_error(stat, routine_name)
+  stat = nf90_inq_varid(ncid, field, fieldid)
+  call handle_nc_error(stat, routine_name)
+  stat = nf90_get_var(ncid, fieldid, data)
+  call handle_nc_error(stat, routine_name)
   stat = nf90_close(ncid)
+  call handle_nc_error(stat, routine_name)
 
-end subroutine read_MPAS_bdyMaskCell
+end subroutine read_MPAS_1D_real
+
+subroutine read_MPAS_2D_real(mpasfile, ndim1, ndim2, field, data)
+!---------------------------------------------------------------------------------------------------
+!
+! Read in 2D real field from an MPAS netCDF file
+!
+! Inputs
+!   mpasfile : string
+!     MPAS netCDF file name
+!   ndim : integer
+!     Length of the one dimension
+!   field : string
+!     2D real field to read
+!
+! Outputs
+!   data : real
+!     Real field
+! 
+!
+! shawn.s.murdzek@noaa.gov
+!---------------------------------------------------------------------------------------------------
+
+  implicit none
+
+  character(len=100), intent(in) :: mpasfile
+  integer, intent(in) :: ndim1,ndim2
+  character(len=50), intent(in) :: field
+  integer, intent(out) :: data(ndim1,ndim2)
+
+  integer :: ncid, stat, fieldid
+  character(len=50) :: routine_name
+
+  routine_name = 'read_MPAS_2D_real'
+
+  stat = nf90_open(mpasfile, nf90_nowrite, ncid)
+  call handle_nc_error(stat, routine_name)
+  stat = nf90_inq_varid(ncid, field, fieldid)
+  call handle_nc_error(stat, routine_name)
+  stat = nf90_get_var(ncid, fieldid, data)
+  call handle_nc_error(stat, routine_name)
+  stat = nf90_close(ncid)
+  call handle_nc_error(stat, routine_name)
+
+end subroutine read_MPAS_2D_real
 
 end module mpasio

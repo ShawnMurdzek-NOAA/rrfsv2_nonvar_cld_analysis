@@ -27,7 +27,7 @@ program  process_metar_cloud
 !
   use mpi
   use kinds, only: r_kind,i_kind,r_single
-  use mpasio, only: read_MPAS_nCell,read_MPAS_lat_lon
+  use mpasio, only: read_MPAS_dim,read_MPAS_lat_lon
 
   use cld_parm_array_mod, only: region_dy,region_dx
   use cld_parm_array_mod, only: metar_impact_radius
@@ -50,6 +50,7 @@ program  process_metar_cloud
   integer(i_kind) :: nCell
   real, allocatable :: lat_m(:),lon_m(:)
   CHARACTER*180   meshfile
+  CHARACTER*50    mpasfield
 !
 !     ****VARIABLES FOR THIS NETCDF FILE****
 !
@@ -113,7 +114,8 @@ program  process_metar_cloud
 ! read MPAS mesh information
 !
      meshfile='mesh.nc'
-     call read_MPAS_nCell(meshfile, nCell)
+     mpasfield='nCells'
+     call read_MPAS_dim(meshfile, mpasfield, nCell)
      write(6,*)
      write(6,*) 'model nCell   =', nCell
      allocate(lat_m(nCell))
