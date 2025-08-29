@@ -181,7 +181,7 @@ subroutine read_MPAS_1D_int(mpasfile, ndim, field, data)
 
 end subroutine read_MPAS_1D_int
 
-subroutine read_MPAS_1D_real(mpasfile, ndim, field, data)
+subroutine read_MPAS_1D_real(mpasfile, ndim, field, data, rem_dim)
 !---------------------------------------------------------------------------------------------------
 !
 ! Read in 1D real field from an MPAS netCDF file
@@ -193,6 +193,8 @@ subroutine read_MPAS_1D_real(mpasfile, ndim, field, data)
 !     Length of the one dimension
 !   field : string
 !     1D real field to read
+!   rem_dim : boolean, optional
+!     Option to explicitly read only the first element in the last dimension (usually time)
 !
 ! Outputs
 !   data : real
@@ -207,10 +209,15 @@ subroutine read_MPAS_1D_real(mpasfile, ndim, field, data)
   character(len=100), intent(in) :: mpasfile
   integer, intent(in) :: ndim
   character(len=50), intent(in) :: field
+  logical, intent(in), optional :: rem_dim
   real, intent(out) :: data(ndim)
 
   integer :: ncid, stat, fieldid
+  logical :: remove_dim
   character(len=50) :: routine_name
+
+  remove_dim=.false.
+  if (present(rem_dim)) remove_dim=rem_dim
 
   routine_name = 'read_MPAS_1D_real'
 
@@ -218,14 +225,18 @@ subroutine read_MPAS_1D_real(mpasfile, ndim, field, data)
   call handle_nc_error(stat, routine_name)
   stat = nf90_inq_varid(ncid, field, fieldid)
   call handle_nc_error(stat, routine_name)
-  stat = nf90_get_var(ncid, fieldid, data)
+  if ( remove_dim ) then
+    stat = nf90_get_var(ncid, fieldid, data, start=(/ 1, 1 /), count=(/ ndim, 1 /))
+  else
+    stat = nf90_get_var(ncid, fieldid, data)
+  endif
   call handle_nc_error(stat, routine_name)
   stat = nf90_close(ncid)
   call handle_nc_error(stat, routine_name)
 
 end subroutine read_MPAS_1D_real
 
-subroutine read_MPAS_2D_real(mpasfile, ndim1, ndim2, field, data)
+subroutine read_MPAS_2D_real(mpasfile, ndim1, ndim2, field, data, rem_dim)
 !---------------------------------------------------------------------------------------------------
 !
 ! Read in 2D real field from an MPAS netCDF file
@@ -233,10 +244,14 @@ subroutine read_MPAS_2D_real(mpasfile, ndim1, ndim2, field, data)
 ! Inputs
 !   mpasfile : string
 !     MPAS netCDF file name
-!   ndim : integer
-!     Length of the one dimension
+!   ndim1 : integer
+!     Length of the first dimension for field
+!   ndim2 : integer
+!     Length of the second dimension for field
 !   field : string
 !     2D real field to read
+!   rem_dim : boolean, optional
+!     Option to explicitly read only the first element in the last dimension (usually time)
 !
 ! Outputs
 !   data : real
@@ -251,10 +266,15 @@ subroutine read_MPAS_2D_real(mpasfile, ndim1, ndim2, field, data)
   character(len=100), intent(in) :: mpasfile
   integer, intent(in) :: ndim1,ndim2
   character(len=50), intent(in) :: field
-  integer, intent(out) :: data(ndim1,ndim2)
+  logical, intent(in), optional :: rem_dim
+  real, intent(out) :: data(ndim1,ndim2)
 
   integer :: ncid, stat, fieldid
+  logical :: remove_dim
   character(len=50) :: routine_name
+
+  remove_dim=.false.
+  if (present(rem_dim)) remove_dim=rem_dim
 
   routine_name = 'read_MPAS_2D_real'
 
@@ -262,7 +282,11 @@ subroutine read_MPAS_2D_real(mpasfile, ndim1, ndim2, field, data)
   call handle_nc_error(stat, routine_name)
   stat = nf90_inq_varid(ncid, field, fieldid)
   call handle_nc_error(stat, routine_name)
-  stat = nf90_get_var(ncid, fieldid, data)
+  if ( remove_dim ) then
+    stat = nf90_get_var(ncid, fieldid, data, start=(/ 1, 1, 1 /), count=(/ ndim1, ndim2, 1 /))
+  else
+    stat = nf90_get_var(ncid, fieldid, data)
+  endif
   call handle_nc_error(stat, routine_name)
   stat = nf90_close(ncid)
   call handle_nc_error(stat, routine_name)

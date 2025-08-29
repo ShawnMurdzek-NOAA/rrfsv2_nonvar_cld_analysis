@@ -24,9 +24,11 @@ mosaic.fd/namelist.mosaic
 mosaic.fd/namelist.mosaic_netcdf
 mosaic.fd/filelist_mrms
 lightning.fd/namelist.lightning
+cloudanalysis.fd/gsiparm.anl
 
 # Other
 *.swp
 slurm*
 *.png
 *.txt
+stdout*
