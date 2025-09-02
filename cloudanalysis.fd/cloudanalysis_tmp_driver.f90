@@ -63,7 +63,8 @@ program cloudanalysis
 
   use get_mpas_bk_mod, only: nCell_full,nCell,nz
   use get_mpas_bk_mod, only: displ_1d,displ_2d,counts_send_1d,counts_send_2d
-  use get_mpas_bk_mod, only: t_bk,ps_bk
+  use get_mpas_bk_mod, only: t_bk,h_bk,p_bk,ps_bk,zh,q_bk,pblh
+  use get_mpas_bk_mod, only: ges_ql,ges_qi,ges_qr,ges_qs,ges_qg,ges_qnr,ges_qni,ges_qnc,ges_qcf
   use get_mpas_bk_mod, only: read_mpas_init,read_mpas_bk
 !
   implicit none
@@ -266,36 +267,8 @@ program cloudanalysis
 ! get background ready
 !
   call read_mpas_init(mype,npe)
-  if (mype == 0) then
-    write(6,*)
-    write(6,*) 'Dimensions of full MPAS background array:'
-    write(6,'(A8,I10,A8,I5)') 'nCell =', nCell_full, 'nz =', nz
-    write(6,*)
-    write(6,*) 'Dimensions of MPAS background on each processor:'
-    write(6,'(A5,4A18)') 'mype','displ_1d','displ_2d','counts_send_1d','counts_send_2d'
-    do i=1,npe
-      write(6,'(I5,5I18)') i-1,displ_1d(i),displ_2d(i),counts_send_1d(i),counts_send_2d(i)
-    enddo
-  endif
-  write(6,*)
-  write(6,*) 'Dimensions of MPAS background array on this processor:'
-  write(6,'(A8,I10,A8,I5)') 'nCell =', nCell, 'nz =', nz
   call MPI_BARRIER(mpi_comm_world,ierror)
-
   call read_mpas_bk(mype)
-  !------------------------------------
-  ! Sanity checks -- Remove these later
-  write(6,*)
-  write(6,*) 'First five ps values ='
-  do i=1,5
-    write(6,*) ps_bk(1,i)
-  enddo
-  write(6,*)
-  write(6,*) 'Theta profile:'
-  do i=nz,1,-1
-    write(6,*) t_bk(1,1,i)
-  enddo
-  !------------------------------------
 
 
   write(6,*)

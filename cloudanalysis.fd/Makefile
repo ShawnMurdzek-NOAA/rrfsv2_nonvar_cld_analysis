@@ -4,7 +4,8 @@
 FFLAGS=-diag-disable=10448 -traceback
 
 # Components of program
-SRC=rapidrefresh_cldsurf_mod.f90 \
+SRC=pbl_height.f90 \
+    rapidrefresh_cldsurf_mod.f90 \
     namelist_mod.f90 \
     get_mpas_bk_mod.f90 \
     cloudanalysis_tmp_driver.f90
