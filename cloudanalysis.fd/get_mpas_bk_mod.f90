@@ -352,8 +352,10 @@ contains
     call read_scatter_2d_field(mype,mpasout_fname,varname,ges_qnc)
 
 ! Cloud fraction (unitless)
+! Original nonvar cloud analysis used cloud fraction from MYNN
+! Here, we use the generic cloud fraction that includes cloud fraction from MYNN
     allocate(ges_qcf(1,nCell,nz))
-    varname = 'cldfrac_bl'
+    varname = 'cldfrac'
     call read_scatter_2d_field(mype,mpasout_fname,varname,ges_qcf)
     do i=1,nz
       write(6,'(A12,I12,2E12.4)') 'cldfrac', i, maxval(ges_qcf(1,:,i)), minval(ges_qcf(1,:,i))
