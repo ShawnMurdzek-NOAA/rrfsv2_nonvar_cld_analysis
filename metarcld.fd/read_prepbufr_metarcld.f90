@@ -293,8 +293,8 @@ subroutine read_prepbufr_metarcld(infile,analysis_time,analysis_minute,&
 ! METAR cloud observation
            if(metarcldobs) then
                  cdata_all(1,iout)=rstation_id    !  station ID
-                 cdata_all(2,iout)=dlon           !  map projection x coordinate
-                 cdata_all(3,iout)=dlat           !  map projection y coordinate
+                 cdata_all(2,iout)=dlon           !  map projection x coordinate (later changed to 1)
+                 cdata_all(3,iout)=dlat           !  map projection y coordinate (later changed to closest MPAS cell index)
                  cdata_all(4,iout)=stnelev        !  station  elevation
                  if(metarvis(1,1) < r0_1_bmiss) then
                     cdata_all(5,iout)=metarvis(1,1)  !  visibility (m)

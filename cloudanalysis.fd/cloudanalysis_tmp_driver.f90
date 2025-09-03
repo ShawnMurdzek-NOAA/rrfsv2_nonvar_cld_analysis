@@ -61,7 +61,7 @@ program cloudanalysis
   use namelist_mod, only: load_namelist
   use namelist_mod, only: iyear,imonth,iday,ihour,iminute,isecond
 
-  use get_mpas_bk_mod, only: nCell_full,nCell,nz
+  use get_mpas_bk_mod, only: nCell_full,nCell,nz,lon2,lat2,nsig
   use get_mpas_bk_mod, only: displ_1d,displ_2d,counts_send_1d,counts_send_2d
   use get_mpas_bk_mod, only: t_bk,h_bk,p_bk,ps_bk,zh,q_bk,pblh
   use get_mpas_bk_mod, only: ges_ql,ges_qi,ges_qr,ges_qs,ges_qg,ges_qnr,ges_qni,ges_qnc,ges_qcf
@@ -86,7 +86,7 @@ program cloudanalysis
 !
   character(len=7) :: obstype
   character(len=20):: isis
-  integer :: nreal,nchanl,ilat,ilon,ndatafv3
+  integer :: nreal,nchanl,ilat,ilon,ndata_model
   integer :: istart,jstart
 !
   integer(i_kind) :: nvarcld_p
@@ -265,10 +265,138 @@ program cloudanalysis
   call load_namelist(mype)
 !
 ! get background ready
+! Note that MPAS still uses 3D arrays even though the data is 2D, and the arrays
+! still have dimensions (lon2, lat2, nsig)
+! For MPAS, lon2 = 1, lat2 = nCell, nsig = nz
 !
   call read_mpas_init(mype,npe)
   call MPI_BARRIER(mpi_comm_world,ierror)
   call read_mpas_bk(mype)
+!
+!
+  krad_bot=7.0_r_single
+
+  opt_hydrometeor_retri=3       ! 1=Kessler 2=Lin 3=Thompson
+  opt_cloudtemperature=3        ! 3=latent heat, 4,5,6 = adiabat profile
+  opt_cloudwaterice_retri=1     ! 1 = RUC layer saturation and autoconvert
+                                ! 2 = convective 
+  imerge_nesdis_nasalarc=2      !  =1 merge NASA LaRC with NESDIS
+                                !  =2 use NASA LaRC only
+                                !  =3 No Satellite cloud top used
+                                !  = other, use NESDIS only
+
+!
+! initialize the observation flag  
+!
+  istat_surface=0
+  istat_nesdis=0
+  istat_radar=0
+  istat_lightning=0
+  istat_nasalarc=0
+
+  print_verbose=.false.
+  if (verbose) print_verbose=.true.
+
+  write(6,*)
+  write(6,*) "analysis time is=",iyear,imonth,iday,ihour,iminute,isecond
+  regional_time(1)=iyear
+  regional_time(2)=imonth
+  regional_time(3)=iday
+  regional_time(4)=ihour
+  regional_time(5)=iminute
+  regional_time(6)=isecond
+
+!  call load_gsdpbl_hgt(mype)
+!
+!  check consistency of the options
+!
+
+! Now either stratiform or cumulus cloud is considered in the cloud
+!  water calculation. This leads to a limitation for the temperature
+!  adjustment when stratiform cloud is chosen because adiabat profile
+!  scheme based on the convection. This limitation may change when 
+!  stratiform and cumulus cloud are both considered at the same time in the future.
+
+  if(opt_cloudwaterice_retri == 1 .and. opt_cloudtemperature >= 4) then
+     write(6,*) 'gsdcloudanalysis: ',&
+       'inconsistent option for opt_cloudwaterice_retri and opt_cloudtemperature'
+     write(6,*) 'gsdcloudanalysis: ',&
+       'opt_cloudtemperature must be set to 3 when opt_cloudwaterice_retri =1'
+     call stop2(113)
+  endif
+!!
+!!----------------------------------------------
+!! 2. read observations                  
+!!----------------------------------------------
+!!
+!! 1.1   allocate observation fields
+!!
+!
+  allocate(ref_mos_3d(lon2,lat2,nsig))
+  allocate(ref_mos_3d_tten(lon2,lat2,nsig))
+  ref_mos_3d=miss_obs_real
+  ref_mos_3d_tten=miss_obs_real
+
+  allocate(lightning(lon2,lat2))
+  lightning=-9999.0_r_kind
+
+  allocate(sat_ctp(lon2,lat2))
+  allocate(sat_tem(lon2,lat2))
+  allocate(w_frac(lon2,lat2))
+  allocate(nlev_cld(lon2,lat2))
+  sat_ctp=miss_obs_real
+  sat_tem=miss_obs_real
+  w_frac=miss_obs_real
+  nlev_cld=miss_obs_int
+
+  allocate(osfc_station_map(lon2,lat2))
+  osfc_station_map=miss_obs_int
+!
+!!
+!! 1.2 start to read observations                 
+!!
+  nmsclvl_radar = -999
+  lunin=55
+
+!!  1.2.2 read in surface observations
+!!
+!!  Note that OI is always 1 and OJ is the MPAS cell index
+!!
+  istart=2
+  jstart=displ_1d(mype+1)+2
+  numsao=0
+!
+  fileexist=.false.
+  obsfile='mpas_metarcloud.bin'
+  inquire(file=trim(obsfile),exist=fileexist)
+  if(fileexist) then
+     open(lunin, file=trim(obsfile),form='unformatted')
+     read(lunin) obstype,isis,nreal,nchanl,ilat,ilon,ndata_model
+     write(6,*) 'metar cloud=',obstype,isis,nreal,nchanl,ilat,ilon,ndata_model
+     numsao=ndata_model
+     allocate(oi(numsao))
+     allocate(oj(numsao))
+     allocate(ocld(nvarcld_p,numsao))
+     allocate(owx(numsao))
+     allocate(oelvtn(numsao))
+     allocate(odist(numsao))
+     allocate(cstation(numsao))
+     allocate(oistation(numsao))
+     allocate(ojstation(numsao))
+     allocate(wimaxstation(numsao))
+     call read_Surface(mype,lunin,istart,jstart,lon2,lat2, &
+                       numsao,nvarcld_p,oi,oj,ocld,owx,oelvtn,&
+                       odist,cstation,oistation,ojstation)
+
+! Immediately deallocate oistation and ojstation b/c they contain incorrect information
+     deallocate(oistation)
+     deallocate(ojstation)
+
+     if(mype == 0) write(6,*) 'gsdcloudanalysis: ',                                  &
+                      'Surface cloud observations are read in successfully'
+     istat_surface=1
+     close(lunin)
+  endif
 
 
   write(6,*)

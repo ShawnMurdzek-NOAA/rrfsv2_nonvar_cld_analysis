@@ -376,6 +376,13 @@ subroutine reorg_metar_cloud_regular(cdata,nreal,ndata,nlat,nlon,nCell,lat_m,lon
      enddo   ! j
    enddo   ! i
 
+! Change cdata(2,:) and cdata(3,:), which are the coordinates of the interpolated obs
+! For the MPAS version of the nonvariational cloud analysis...
+!   Longitude is always 1
+!   Latitude is the MPAS cell index
+   cdata_all(2,:) = 1
+   cdata_all(3,:) = cdata_all(24,:)
+
    ngrid = iout
 
    deallocate(first_sta)

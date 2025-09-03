@@ -144,7 +144,7 @@ program  process_metar_cloud
        write(13,'(13a12)') 'icell', 'MPAS_lat', 'MPAS_lon', 'sta_lat', 'sta_lon', 'min_dist', 'ID', &
               'cover1', 'cover2', 'cover3', 'base1', 'base2', 'base3' 
        do i=1,ndata
-          icell = cdata_regular(24,i)
+          icell = cdata_regular(3,i)
           sta_lon = cdata_regular(26,i) - 360.
           rstation_id = cdata_regular(1,i)
           write(13,'(I12,5f12.3,a12,6f12.3)') icell, lat_m(icell), lon_m(icell), &

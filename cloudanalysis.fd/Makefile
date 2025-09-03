@@ -4,7 +4,8 @@
 FFLAGS=-diag-disable=10448 -traceback
 
 # Components of program
-SRC=pbl_height.f90 \
+SRC=NonVarCldLib/read_Surface.f90 \
+    pbl_height.f90 \
     rapidrefresh_cldsurf_mod.f90 \
     namelist_mod.f90 \
     get_mpas_bk_mod.f90 \
@@ -13,8 +14,10 @@ OBJ=${SRC:.f90=.o}
 
 # Program dependencies
 share_dir=../share
+nonvar_cld_lib_dir=./NonVarCldLib
 INCLD=-I${netcdf_fortran_ROOT}/include \
-      -I$(share_dir)
+      -I$(share_dir) \
+      -I$(nonvar_cld_lib_dir)
 LIBS=-L${netcdf_fortran_ROOT}/lib -lnetcdff
 SHARE=$(share_dir)/kinds.o \
       $(share_dir)/constants.o \

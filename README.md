@@ -2,7 +2,7 @@
 
 The nonvariational cloud analysis is an algorithm for updating the model state based on cloud and precipitation observations from ceilometers, satellite, radar, and lightning detection networks. The ultimate goal of this analysis is to better represent clouds in the model initial conditions and improve forecasts of cloud ceilings. More detailed information about the design and value of the nonvariational cloud analysis can be found in [Benjamin et al. (2021)](https://doi.org/10.1175/MWR-D-20-0319.1)
 
-This code is based off of [rrfs-utl](https://github.com/NOAA-GSL/rrfs_utl), which contains the nonvariational cloud analysis for the FV3-based RRFSv1.
+This code is based off of [rrfs-utl](https://github.com/NOAA-GSL/rrfs_utl), which contains the nonvariational cloud analysis for the FV3-based RRFSv1. Notable differences between the FV3 and MPAS implementations can be found in the "Comparison to FV3" section below. All files that have been altered to accomodate MPAS have a corresponding unaltered file that has "FV3" or "fv3" in the name. Although these files are still included here, they are excluded from the Makefiles, and are, therefore, not compiled when building the programs.
 
 ## Organization
 
@@ -31,3 +31,7 @@ The remaining directories are as follows:
 0. Add an `.env` file to `./env/` if there is not one for the machine you are working on
 1. Edit `build_all.sh` to include the correct machine
 2. Run `bash build_all.sh`
+
+## Comparison to FV3
+
+The chief difference between MPAS and FV3 that is relevant for the nonvariational cloud analysis is that FV3 uses a 3D dimensional grid (x, y, z) for 3D fields whereas MPAS uses a 2D dimensional grid (cell, z). In an effort to minimize the number of files that need to be changed when adapting the nonvariational cloud analysis for MPAS, many of the arrays in `cloudanalysis.fd` are still 3D with dimensions `(lon2, lat2, nsig)`. For the MPAS implementation here, `lon2 = 1, lat2 = nCell, nsig = nz`. Thus, these 3D arrays are effectively 2D.

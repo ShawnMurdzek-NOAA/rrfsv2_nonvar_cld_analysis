@@ -39,7 +39,7 @@ module get_mpas_bk_mod
 
   public :: t_bk,h_bk,p_bk,ps_bk,zh,q_bk,pblh
   public :: ges_ql,ges_qi,ges_qr,ges_qs,ges_qg,ges_qnr,ges_qni,ges_qnc,ges_qcf
-  public :: nCell_full,nCell,nz
+  public :: nCell_full,nCell,nz,lon2,lat2,nsig
   public :: displ_1d,displ_2d,counts_send_1d,counts_send_2d
 !
   public :: read_mpas_init
@@ -73,6 +73,8 @@ module get_mpas_bk_mod
 ! have a vertical dimension of nz
   integer(i_kind) :: nCell_full,nz   ! Dimensions of full background array
   integer(i_kind) :: nCell           ! Dimensions of background arrays on each processor
+  integer(i_kind) :: lon2,lat2,nsig  ! Dimensions used by cloudanalysis.fd
+                                     ! For MPAS, lon2=1, lat2=nCell, nsig=nz
   character(len=50) :: dim_name
 !
 ! background files
@@ -158,6 +160,11 @@ contains
       nCell = min_cell
     endif
 
+! Define lon2, lat2, and nsig (needed in cloudanalysis.fd
+    lon2 = 1
+    lat2 = nCell
+    nsig = nz
+
 ! Write info (useful for debugging)
     write(6,*)
     write(6,*) '------------------------------------------------------------'
@@ -176,6 +183,7 @@ contains
     write(6,*)
     write(6,*) 'Dimensions of MPAS background array on this processor:'
     write(6,'(A8,I10,A8,I5)') 'nCell =', nCell, 'nz =', nz
+    write(6,'(A8,I5,A8,I10,A8,I5)') 'lon2 =', lon2, 'lat2 =', lat2, 'nsig =', nsig
 
   end subroutine read_mpas_init
 
