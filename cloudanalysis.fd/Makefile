@@ -5,6 +5,7 @@ FFLAGS=-diag-disable=10448 -traceback
 
 # Components of program
 SRC=NonVarCldLib/read_Surface.f90 \
+    NonVarCldLib/read_radar_ref.f90 \
     pbl_height.f90 \
     rapidrefresh_cldsurf_mod.f90 \
     namelist_mod.f90 \

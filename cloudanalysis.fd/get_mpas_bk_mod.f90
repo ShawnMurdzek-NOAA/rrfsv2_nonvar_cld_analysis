@@ -115,6 +115,8 @@ contains
     mpasout_fname = 'mpasout.nc'
     mpas_invariant_fname = 'invariant.nc'
 
+    allocate(displ_1d(npe))
+
     if (mype == 0) then
 
 ! Determine dimensions of full MPAS background
@@ -126,7 +128,6 @@ contains
 ! Determine dimensions of background arrays on each processor
       allocate(counts_send_1d(npe))
       allocate(counts_send_2d(npe))
-      allocate(displ_1d(npe))
       allocate(displ_2d(npe))
       min_cell = nCell_full / npe
       remainder = mod(nCell_full, npe)
@@ -154,6 +155,7 @@ contains
     call MPI_BCAST(min_cell,1,mpi_integer,0,mpi_comm_world,ierror)
     call MPI_BCAST(remainder,1,mpi_integer,0,mpi_comm_world,ierror)
     call MPI_BCAST(nz,1,mpi_integer,0,mpi_comm_world,ierror)
+    call MPI_BCAST(displ_1d,npe,mpi_integer,0,mpi_comm_world,ierror)
     if (mype < remainder) then 
       nCell = min_cell + 1
     else

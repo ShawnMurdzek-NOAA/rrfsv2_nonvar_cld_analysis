@@ -50,6 +50,7 @@ program process_NSSL_mosaic
 !  gridded reflectivity
   REAL, allocatable :: ref3d(:,:)   ! 3D reflectivity
   REAL, allocatable :: ref0(:,:)   ! 3D reflectivity
+  REAL, allocatable :: tmp_ref(:,:,:)   ! temporary 3D reflectivity array
   REAL(r_kind), allocatable :: ref3d_column(:,:)   ! 3D reflectivity in column
 !
 !  MPAS mesh
@@ -258,12 +259,15 @@ program process_NSSL_mosaic
   deallocate(ref3d)
 !
   if(mype==0) then
+     allocate(tmp_ref(1,nCell,maxlvl)) ! Need to output 3D array for cloudanalysis.fd
+     tmp_ref(1,:,:) = ref0(:,:)
      write(outfile,'(a,a)') './', 'RefInGSI3D.dat'
      write(outfile_netcdf,'(a,a)') './', 'Gridded_ref.nc'
      OPEN(10,file=trim(outfile),form='unformatted')
-        write(10) maxlvl,nCell
-        write(10) ref0
+        write(10) maxlvl,1,nCell
+        write(10) tmp_ref
      close(10)
+     deallocate(tmp_ref)
      DO k=1,maxlvl
         write(*,*) k,maxval(ref0(:,k)),minval(ref0(:,k))
      ENDDO

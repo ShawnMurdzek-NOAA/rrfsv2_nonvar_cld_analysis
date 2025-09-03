@@ -2,9 +2,10 @@
 
 #SBATCH -M c6
 #SBATCH -A bil-pmp
-#SBATCH -t 00:30:00
+#SBATCH -t 00:10:00
 #SBATCH --ntasks=48
 #SBATCH --nodes=2
+#SBATCH --qos=debug
 
 # Script to run process_NSSL_mosaic.exe for MPAS for a single time
 

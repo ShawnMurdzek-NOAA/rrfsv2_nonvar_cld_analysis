@@ -362,8 +362,8 @@ program cloudanalysis
 !!
 !!  Note that OI is always 1 and OJ is the MPAS cell index
 !!
-  istart=2
-  jstart=displ_1d(mype+1)+2
+  istart=displ_1d(mype+1)+2
+  jstart=2
   numsao=0
 !
   fileexist=.false.
@@ -397,6 +397,28 @@ program cloudanalysis
      istat_surface=1
      close(lunin)
   endif
+
+!!  1.2.6 read in reflectivity mosaic
+!!
+  fileexist=.false.
+  obsfile='RefInGSI3D.dat'
+  write(6,*)
+  write(6,*) 'processing ',trim(obsfile)
+
+  inquire(file=trim(obsfile),exist=fileexist)
+  if(fileexist) then
+     nsat1=0
+     nmsclvl_radar=33
+     open(lunin, file=trim(obsfile),form='unformatted')
+     allocate( ref_mosaic31(lon2,lat2,nmsclvl_radar) )
+     ref_mosaic31=-99999.0_r_single
+     call read_radar_ref_bin(mype,lunin,istart,jstart,lon2,lat2,nmsclvl_radar,ref_mosaic31)
+     write(6,*) 'gsdcloudanalysis: ',                         &
+                   ' radar reflectivity is read in successfully'
+     istat_radar=1
+     close(lunin)
+  endif
+
 
 
   write(6,*)
