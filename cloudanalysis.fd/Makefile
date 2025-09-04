@@ -10,6 +10,12 @@ SRC=NonVarCldLib/map_ctp.f90 \
     NonVarCldLib/read_radar_ref.f90 \
     NonVarCldLib/read_Lightning_cld.f90 \
     NonVarCldLib/read_nasalarc_cld.f90 \
+    NonVarCldLib/vinterp_radar_ref.f90 \
+    NonVarCldLib/build_missing_REFcone.f90 \
+    NonVarCldLib/convert_lghtn2ref.f90 \
+    NonVarCldLib/adaslib.f90 \
+    NonVarCldLib/BckgrndCC.f90 \
+    NonVarCldLib/cloudCover_Surface.f90 \
     pbl_height.f90 \
     rapidrefresh_cldsurf_mod.f90 \
     namelist_mod.f90 \

@@ -23,8 +23,8 @@ SUBROUTINE build_missing_REFcone(mype,nlon,nlat,nsig,krad_bot_in,ref_mos_3d,h_bk
 !
 !   input argument list:
 !     mype        - processor ID
-!     nlon        - no. of lons on subdomain (buffer points on ends)
-!     nlat        - no. of lats on subdomain (buffer points on ends)
+!     nlon        - no. of lons on subdomain
+!     nlat        - no. of lats on subdomain
 !     nsig        - no. of levels
 !     krad_bot    - radar bottom level
 !     ref_mos_3d  - 3D radar reflectivity
@@ -165,8 +165,8 @@ SUBROUTINE build_missing_REFcone(mype,nlon,nlat,nsig,krad_bot_in,ref_mos_3d,h_bk
      newlvlAll(k)=newlvlAll(k)*1000.0_r_kind
   ENDDO
 !
-  DO j=2,nlat-1
-    DO i=2,nlon-1
+  DO j=1,nlat
+    DO i=1,nlon
       ifmissing=0
       maxref=-9999.0_r_kind
 !mhu      krad_bot= int( max(krad_bot_in,pblh(i,j)) + 0.5_r_single )  ! consider PBL height

@@ -362,6 +362,10 @@ program cloudanalysis
 !!
 !!  Note that OI is always 1 and OJ is the MPAS cell index
 !!
+!!  Also note that the subroutines here to read obs assume there is a 1-grid point buffer
+!!  included in the domain defined by lon2 and lat2. That is why we need to add 2 to istart
+!!  and jstart.
+!!
   istart=displ_1d(mype+1)+2
   jstart=2
   numsao=0
@@ -443,8 +447,229 @@ program cloudanalysis
      istat_nasalarc = 1
      close(lunin)
   endif
+! 
+!!
+!!  1.4  if there are NASA LaRC cloud products, use them to replace NESDIS ones.
+!!       So we use NASA LaRC data in the same way as NESDIS ones
+!!
+  if(imerge_nesdis_nasalarc == 1 ) then
+     if(istat_nasalarc == 1 ) then      
+        do j=1,lat2
+           do i=1,lon2
+             if(sat_ctp(i,j) < -99990.0) then   ! missing value is -999999.0
+                sat_ctp(i,j) = nasalarc_cld(i,j,1)
+                sat_tem(i,j) = nasalarc_cld(i,j,2)
+                w_frac(i,j)  = nasalarc_cld(i,j,3)
+                nlev_cld(i,j)= int(nasalarc_cld(i,j,5))
+                istat_nesdis =istat_nasalarc
+             endif
+           enddo
+        enddo
+     endif
+  elseif ( imerge_nesdis_nasalarc == 2) then
+     if(istat_nasalarc == 1 ) then
+       sat_ctp(:,:) = nasalarc_cld(:,:,1)
+       sat_tem(:,:) = nasalarc_cld(:,:,2)
+       w_frac(:,:)  = nasalarc_cld(:,:,3)
+       nlev_cld(:,:)= int(nasalarc_cld(:,:,5))
+       istat_nesdis =istat_nasalarc
+     endif
+  elseif ( imerge_nesdis_nasalarc == 3) then 
+       istat_nesdis = 0                      
+  endif                     
+!!                              
+!!
+!!  1.6 collect the cloud information from whole domain
+!!       and assign the background cloud to each METAR obs
+!!
+  allocate(sumqci(lon2,lat2,nsig)) 
+  do k=1,nsig
+     do j=1,lat2
+        do i=1,lon2
+           sumqci(i,j,k)= ges_ql(i,j,k) + ges_qi(i,j,k)
+        enddo
+     enddo
+  enddo
+!
+  allocate(watericemax(lon2,lat2))
+  allocate(kwatericemax(lon2,lat2))
+  watericemax=0._r_kind
+  wimaxstation=0.0_r_single
+  kwatericemax=-1 
+  do j=1,lat2
+     do i=1,lon2
+       do k = 1,nsig
+          watericemax(i,j) = max(watericemax(i,j),sumqci(i,j,k))
+       end do
+       do k=1,nsig
+          if (sumqci(i,j,k) > cloud_def_p .and. kwatericemax(i,j) == -1) then
+             kwatericemax(i,j) = k
+          end if  
+       end do
+     enddo
+  enddo
+!!
+!  im=nlon_regional
+!  jm=nlat_regional
+!  allocate(all_loc(lat2,lon2))
+!  allocate(strp(lat1*lon1))
+!  allocate(tempa(itotsub))
+!  allocate(temp1(im,jm))
+!  do j=1,lat2
+!     do i=1,lon2
+!        all_loc(j,i) = watericemax(i,j)
+!     enddo
+!  enddo
+!  call strip(all_loc,strp)
+!  call mpi_allgatherv(strp,ijn(mype+1),mpi_real4, &
+!            tempa,ijn,displs_g,mpi_real4,mpi_comm_world,ierror)
+!  ierror=0
+!  if(ierror /= 0 ) then
+!     write(*,*) 'MPI error: cloud analysis=',mype
+!  endif
+!  temp1=0.0_r_single
+!  call unfill_mass_grid2t(tempa,im,jm,temp1)
+!
+!  if(istat_surface==1) then
+!     do ista=1,numsao
+!        iob = min(max(int(oistation(ista)+0.5),1),im)
+!        job = min(max(int(ojstation(ista)+0.5),1),jm)
+!        wimaxstation(ista)=temp1(iob,job)
+!        if(wimaxstation(ista) > 0._r_single) then
+!            i=int(oi(ista))
+!            j=int(oj(ista))
+!        endif
+!     enddo
+!  endif
+!  deallocate(all_loc,strp,tempa,temp1)
+!
+!! make a surface station map in grid coordinate
+! doesn't work for FV3LAM
+!  if(istat_surface==1) then
+!     do ista=1,numsao
+!        iob = int(oistation(ista)-jstart(mype+1)+2)
+!        job = int(ojstation(ista)-istart(mype+1)+2)
+!        if(iob >=1 .and. iob<=lon2-1 .and. job >=1 .and. job<=lat2-1) then
+!           osfc_station_map(iob,job)=1
+!           osfc_station_map(iob+1,job)=1
+!           osfc_station_map(iob,job+1)=1
+!           osfc_station_map(iob+1,job+1)=1
+!        endif
+!!     enddo
+!  endif
+!!
+!!  1.8 check if data available: if no data in this subdomain, return. 
+!!
+  if( (istat_radar + istat_surface + istat_nesdis + istat_lightning ) == 0 ) then
+     write(6,*) ' No cloud observations available, skip this domain ', mype
+     if(allocated(ref_mos_3d))      deallocate(ref_mos_3d)
+     if(allocated(ref_mos_3d_tten)) deallocate(ref_mos_3d_tten)
+     if(allocated(lightning))       deallocate(lightning)
+     if(allocated(sat_ctp))         deallocate(sat_ctp)
+     if(allocated(sat_tem))         deallocate(sat_tem)
+     if(allocated(w_frac))          deallocate(w_frac)
+     if(allocated(nlev_cld))        deallocate(nlev_cld)
+  else
+!!
+!!----------------------------------------------
+!! 2. allocated background arrays and read background  
+!!    further observation data process before cloud analysis
+!!----------------------------------------------
+!
+!!
+!! 2.2   allocate background and analysis fields
+!!
+  allocate(cldwater_3d(lon2,lat2,nsig))
+  allocate(cldice_3d(lon2,lat2,nsig))
+  allocate(rain_3d(lon2,lat2,nsig))
+  allocate(nrain_3d(lon2,lat2,nsig))
+  allocate(snow_3d(lon2,lat2,nsig))
+  allocate(graupel_3d(lon2,lat2,nsig))
+  allocate(cldtmp_3d(lon2,lat2,nsig))
+  allocate(vis2qc(lon2,lat2))
+  cldwater_3d=miss_obs_real
+  cldice_3d=miss_obs_real
+  rain_3d=miss_obs_real
+  nrain_3d=miss_obs_real
+  snow_3d=miss_obs_real
+  graupel_3d=miss_obs_real
+  cldtmp_3d=miss_obs_real
+  vis2qc=miss_obs_real
+  allocate(rain_1d_save(nsig))
+  allocate(nrain_1d_save(nsig))
+  allocate(snow_1d_save(nsig))
+  rain_1d_save=miss_obs_real
+  nrain_1d_save=miss_obs_real
+  snow_1d_save=miss_obs_real
+  allocate(nice_3d(lon2,lat2,nsig))
+  allocate(nwater_3d(lon2,lat2,nsig))
+  nice_3d=miss_obs_real
+  nwater_3d=miss_obs_real
+!!          
+!! 2.4 read in background fields
+!!          
+!   call read_fv3sar_fix
+!        zh(i,j)     !  terrain in meter
+!        ps_bk(i,j)  !  surace pressure in mb
+!        xland(i,j)  !  0=water, 1=land, 2=ice
+!        soiltbk(i,j)!  soil temperature
+!        xlon(i,j)   !  longitude back to degree
+!        xlat(i,j)   !  latitude  back to degree
+!        q_bk(i,j,k) ! specific humidity
+!        qmixr = q_bk(i,j,k)/(one - q_bk(i,j,k))     ! covert from specific humidity to mixing ratio
+!        t_bk(i,j,k)=ges_tv(j,i,k)/                                  &
+!                     (one+fv*q_bk(i,j,k))   ! virtual temp to temp
+!  call BackgroundCld(mype,lon2,lat2,nsig,t_bk,p_bk,ps_bk,q_bk,h_bk,    &
+!             zh,pt_ll,eta1_ll,aeta1_ll,eta2_ll,aeta2_ll,regional,wrf_mass_regional)
+!
+!! 
+!!  2.6 vertical interpolation of radar reflectivity
+!!
+!  call MPI_Barrier(mpi_comm_world, ierror)
+  if(istat_radar ==  1 ) then
+     call vinterp_radar_ref(mype,lon2,lat2,nsig,nmsclvl_radar, &
+                          ref_mos_3d,ref_mosaic31,h_bk,zh)
+     deallocate( ref_mosaic31 )
+     ref_mos_3d_tten=ref_mos_3d
+     call build_missing_REFcone(mype,lon2,lat2,nsig,krad_bot,ref_mos_3d_tten,h_bk,pblh)
+  endif
+!!
+!!  2.8 convert lightning to reflectivity 
+!!  
+  if(istat_lightning ==  1 ) then
+     call convert_lghtn2ref(mype,lon2,lat2,nsig,ref_mos_3d_tten,lightning,h_bk)
+  endif
+!!
+!!
+!!----------------------------------------------
+!! 3.  Calculate 3-d cloud cover obs-information field (cld_cover_3d), 
+!!               cloud type, precipitation type 
+!!----------------------------------------------
+!!
+  allocate(cld_cover_3d(lon2,lat2,nsig))
+  allocate(cld_type_3d(lon2,lat2,nsig))
+  allocate(wthr_type_2d(lon2,lat2))
+  allocate(pcp_type_3d(lon2,lat2,nsig))
+  allocate(cloudlayers_i(lon2,lat2,21))
+  cld_cover_3d=miss_obs_real
+  cld_type_3d =miss_obs_int
+  wthr_type_2d=miss_obs_int
+  pcp_type_3d =miss_obs_int
+!!
+!!
+!  call MPI_Barrier(mpi_comm_world, ierror)
+  if(istat_surface ==  1) then
+     call cloudCover_surface(mype,lat2,lon2,nsig,thunderRadius,           &
+              cld_bld_hgt,t_bk,p_bk,q_bk,h_bk,zh,                         &
+              numsao,nvarcld_p,numsao,oi,oj,ocld,owx,oelvtn,odist,        &
+              cld_cover_3d,cld_type_3d,wthr_type_2d,pcp_type_3d,          &
+              wimaxstation, kwatericemax,vis2qc)
+     write(6,*) 'gsdcloudanalysis:',                        &
+                   'success in cloud cover analysis using surface data'
+  endif
+!
 
-
+  endif  ! Not explicitly copied from the FV3 cloudanalysis.fd driver, but needed to close the if statement that starts on line 563
 
   write(6,*)
   write(6,*) '========================================'
