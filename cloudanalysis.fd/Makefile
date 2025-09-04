@@ -16,6 +16,7 @@ SRC=NonVarCldLib/map_ctp.f90 \
     NonVarCldLib/adaslib.f90 \
     NonVarCldLib/BckgrndCC.f90 \
     NonVarCldLib/cloudCover_Surface.f90 \
+    NonVarCldLib/cloudCover_NESDIS.f90 \
     pbl_height.f90 \
     rapidrefresh_cldsurf_mod.f90 \
     namelist_mod.f90 \

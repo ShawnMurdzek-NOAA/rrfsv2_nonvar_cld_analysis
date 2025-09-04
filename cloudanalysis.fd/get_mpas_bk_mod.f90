@@ -32,7 +32,8 @@ module get_mpas_bk_mod
   use kinds,   only: r_single,i_kind, r_kind
   use constants, only: init_constants,init_constants_derived
   use constants, only: rd,h1000,rd_over_cp,grav
-  use mpasio, only: read_MPAS_dim,read_MPAS_2D_real,read_MPAS_1D_real
+  use constants, only: rad2deg
+  use mpasio, only: read_MPAS_dim,read_MPAS_2D_real,read_MPAS_1D_real,read_MPAS_1D_int
 
   implicit none
   private
@@ -41,6 +42,7 @@ module get_mpas_bk_mod
   public :: ges_ql,ges_qi,ges_qr,ges_qs,ges_qg,ges_qnr,ges_qni,ges_qnc,ges_qcf
   public :: nCell_full,nCell,nz,lon2,lat2,nsig
   public :: displ_1d,displ_2d,counts_send_1d,counts_send_2d
+  public :: xlat,xlon,xland,soiltbk
 !
   public :: read_mpas_init
   public :: read_mpas_bk
@@ -67,6 +69,12 @@ module get_mpas_bk_mod
   real(r_single),allocatable :: ges_qni(:,:,:) ! cloud ice number concentration
   real(r_single),allocatable :: ges_qnc(:,:,:) ! cloud water number concentration
   real(r_single),allocatable :: ges_qcf(:,:,:) ! cloud fraction
+!
+! information needed for cloudCover_NESDIS subroutine
+  real(r_single),allocatable :: xlon(:,:)      ! Longitude
+  real(r_single),allocatable :: xlat(:,:)      ! Latitude
+  real(r_single),allocatable :: xland(:,:)     ! Surface type (water or land)
+  real(r_single),allocatable :: soiltbk(:,:)   ! Background soil temperature
 !
 ! MPAS mesh information
 ! Note that both the full background array and the smaller arrays on each processor
@@ -162,7 +170,7 @@ contains
       nCell = min_cell
     endif
 
-! Define lon2, lat2, and nsig (needed in cloudanalysis.fd
+! Define lon2, lat2, and nsig (needed in cloudanalysis.fd)
     lon2 = 1
     lat2 = nCell
     nsig = nz
@@ -215,6 +223,7 @@ contains
     character(len=50) :: varname
     integer :: i,ierror
     real(r_single), allocatable :: tmp1_full(:,:),tmp2_full(:,:),tmp(:,:)
+    integer, allocatable :: tmp_int_full(:),tmp_int(:)
     real(r_single) :: p_base(1,nCell,nz)
 
     write(6,*)
@@ -360,6 +369,58 @@ contains
     do i=1,nz
       write(6,'(A12,I12,2E12.4)') 'cldfrac', i, maxval(ges_qcf(1,:,i)), minval(ges_qcf(1,:,i))
     enddo 
+
+! Latitude (deg N)
+    allocate(xlat(1,nCell))
+    varname = 'latCell'
+    call read_scatter_1d_field(mype,mpas_invariant_fname,varname,xlat,rem_dim=.false.)
+    xlat = xlat * rad2deg
+    write(6,'(A12,I12,2F12.4)') 'xlat', -1, maxval(xlat(1,:)), minval(xlat(1,:))
+
+! Longitude (deg E, range 0 to 360)
+    allocate(xlon(1,nCell))
+    varname = 'lonCell'
+    call read_scatter_1d_field(mype,mpas_invariant_fname,varname,xlon,rem_dim=.false.)
+    xlon = xlon * rad2deg
+    do i=1,nCell
+      if (xlon(1,i) < 0) then
+        xlon(1,i) = 360. + xlon(1,i)
+      endif
+    enddo
+    write(6,'(A12,I12,2F12.4)') 'xlon', -1, maxval(xlon(1,:)), minval(xlon(1,:))
+
+! Land/water mask (1 = land, 0 = water)
+! Cannot use read_scatter_1d_field b/c landmask is an integer
+    if (mype == 0) then
+      allocate(tmp_int_full(nCell_full))
+    endif
+    allocate(tmp_int(nCell))
+    allocate(xland(1,nCell))
+
+    call MPI_BARRIER(mpi_comm_world,ierror)
+    if (mype == 0) then
+      varname = 'landmask'
+      call read_MPAS_1D_int(mpas_invariant_fname, nCell_full, varname, tmp_int_full)
+    endif
+    call MPI_BARRIER(mpi_comm_world,ierror)
+    call MPI_SCATTERV(tmp_int_full,counts_send_1d,displ_1d,MPI_INTEGER, &
+                      tmp_int,nCell,MPI_INTEGER,0,mpi_comm_world,ierror)
+
+    xland(1,:) = real(tmp_int(:))
+
+    call MPI_BARRIER(mpi_comm_world,ierror)
+    deallocate(tmp_int)
+    if (mype == 0) then
+      deallocate(tmp_int_full)
+    endif
+
+    write(6,'(A12,I12,2F12.4)') 'xland', -1, maxval(xland(1,:)), minval(xland(1,:))
+
+! Skin temperature (K)
+    allocate(soiltbk(1,nCell))
+    varname = 'skintemp'
+    call read_scatter_1d_field(mype,mpasout_fname,varname,soiltbk)
+    write(6,'(A12,I12,2F12.4)') 'soiltbk', -1, maxval(soiltbk(1,:)), minval(soiltbk(1,:))
 
   end subroutine read_mpas_bk
 

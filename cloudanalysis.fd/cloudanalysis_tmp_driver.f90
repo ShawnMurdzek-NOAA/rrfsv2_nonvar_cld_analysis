@@ -66,6 +66,7 @@ program cloudanalysis
   use get_mpas_bk_mod, only: t_bk,h_bk,p_bk,ps_bk,zh,q_bk,pblh
   use get_mpas_bk_mod, only: ges_ql,ges_qi,ges_qr,ges_qs,ges_qg,ges_qnr,ges_qni,ges_qnc,ges_qcf
   use get_mpas_bk_mod, only: read_mpas_init,read_mpas_bk
+  use get_mpas_bk_mod, only: xlon,xlat,xland,soiltbk
 !
   implicit none
 
@@ -668,6 +669,28 @@ program cloudanalysis
                    'success in cloud cover analysis using surface data'
   endif
 !
+  if(istat_nesdis == 1 ) then
+     !call cloudCover_NESDIS(mype,regional_time,lat2,lon2,nsig,            &
+     !                    xlon,xlat,t_bk,p_bk,h_bk,xland,                  &
+     !                    soiltbk,sat_ctp,sat_tem,w_frac,                  &
+     !                    l_cld_bld,cld_bld_hgt,                           &
+     !                    build_cloud_frac_p,clear_cloud_frac_p,nlev_cld,  &
+     !                    cld_cover_3d,cld_type_3d,wthr_type_2d,osfc_station_map)
+     write(6,*) 'gsdcloudanalysis:',                        &
+                   ' success in cloud cover analysis using NESDIS data'
+  endif
+!  call MPI_Barrier(mpi_comm_world, ierror)
+!
+!! for Rapid Refresh application, turn off the radar reflectivity impact 
+!! on cloud distribution  (Oct. 14, 2010)
+!!  if(istat_radar == 1 .or. istat_lightning == 1 ) then
+!!     call cloudCover_radar(mype,lat2,lon2,nsig,h_bk,ref_mos_3d,  &
+!!                           cld_cover_3d,wthr_type_2d)
+!!     if(mype == 0) write(6,*) 'gsdcloudanalysis: ',                 & 
+!!                   ' success in cloud cover analysis using radar data'
+!!  endif
+!
+
 
   endif  ! Not explicitly copied from the FV3 cloudanalysis.fd driver, but needed to close the if statement that starts on line 563
 
