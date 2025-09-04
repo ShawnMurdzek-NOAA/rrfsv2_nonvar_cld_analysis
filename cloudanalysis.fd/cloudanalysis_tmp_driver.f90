@@ -426,6 +426,23 @@ program cloudanalysis
   call read_Lightning2cld(obsfile,lon2,lat2,istart,jstart,lightning, &
                           istat_lightning)
   write(6,*) 'gsdcloudanalysis: Lightning is read in successfully'
+!
+!  1.2.9 read in NASA LaRC cloud products
+!
+  fileexist=.false.
+  obsfile='NASALaRC_cloud4mpas.bin'
+  inquire(file=trim(obsfile),exist=fileexist)
+  if(fileexist) then
+     open(lunin, file=trim(obsfile),form='unformatted')
+     allocate(nasalarc_cld(lon2,lat2,5))
+     nasalarc_cld=miss_obs_real
+
+     call read_NASALaRC_fv3(mype,lunin,lon2,lat2,istart,jstart,nasalarc_cld)
+     write(6,*) 'gsdcloudanalysis:',                       &
+                  'NASA LaRC cloud products are read in successfully'
+     istat_nasalarc = 1
+     close(lunin)
+  endif
 
 
 

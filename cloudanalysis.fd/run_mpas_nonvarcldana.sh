@@ -35,6 +35,7 @@ cp ${mpasout_file} mpasout.nc
 cp ../metarcld.fd/mpas_metarcloud.bin .
 cp ../mosaic.fd/RefInGSI3D.dat .
 cp ../lightning.fd/LightningInMPAS.dat .
+cp ../larccld.fd/NASALaRC_cloud4mpas.bin .
 
 # Create namelist
 # Options come from RRFSv1 version of rrfs-workflow (FV3-based)

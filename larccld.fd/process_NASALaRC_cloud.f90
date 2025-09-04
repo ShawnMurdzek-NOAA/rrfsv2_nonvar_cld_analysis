@@ -84,11 +84,11 @@ program  process_NASALaRC_cloud
 !
 !  array for RR
 !
-  REAL(r_single), allocatable ::   w_pcld(:)
-  REAL(r_single), allocatable ::   w_tcld(:)
-  REAL(r_single), allocatable ::   w_frac(:)
-  REAL(r_single), allocatable ::   w_lwp (:)
-  integer(i_kind),allocatable ::   nlev_cld(:)
+  REAL(r_single), allocatable ::   w_pcld(:,:)
+  REAL(r_single), allocatable ::   w_tcld(:,:)
+  REAL(r_single), allocatable ::   w_frac(:,:)
+  REAL(r_single), allocatable ::   w_lwp (:,:)
+  integer(i_kind),allocatable ::   nlev_cld(:,:)
 !
 ! Working
 !
@@ -361,11 +361,11 @@ program  process_NASALaRC_cloud
 !
 !  Now, map the observations to the MPAS mesh
 !
-     allocate(w_pcld(nCell))
-     allocate(w_tcld(nCell))
-     allocate(w_frac(nCell))
-     allocate(w_lwp(nCell))
-     allocate(nlev_cld(nCell))
+     allocate(w_pcld(1,nCell))
+     allocate(w_tcld(1,nCell))
+     allocate(w_frac(1,nCell))
+     allocate(w_lwp(1,nCell))
+     allocate(nlev_cld(1,nCell))
      w_pcld=99999.
      w_tcld=99999.
      w_frac=99999.
@@ -390,15 +390,15 @@ program  process_NASALaRC_cloud
        else
 
          if ((index(ii1,jj1) >= 1 .and. index(ii1,jj1) < 3) .and. userDX < 7000.0) then
-            w_pcld(im) = Pxx(ii1,jj1,1) ! hPa
-            w_tcld(im) = Txx(ii1,jj1,1) ! K
-            w_lwp(im) = WPxx(ii1,jj1,1) ! g/m^2
-            w_frac(im) = 1
-            nlev_cld(im) = 1
-            if (w_pcld(im).eq.-20) then
-                 w_pcld(im) = 1013. ! hPa - no cloud
-                 w_frac(im)=0.0
-                 nlev_cld(im) = 0
+            w_pcld(1,im) = Pxx(ii1,jj1,1) ! hPa
+            w_tcld(1,im) = Txx(ii1,jj1,1) ! K
+            w_lwp(1,im) = WPxx(ii1,jj1,1) ! g/m^2
+            w_frac(1,im) = 1
+            nlev_cld(1,im) = 1
+            if (w_pcld(1,im).eq.-20) then
+                 w_pcld(1,im) = 1013. ! hPa - no cloud
+                 w_frac(1,im)=0.0
+                 nlev_cld(1,im) = 0
             end if
          elseif(index(ii1,jj1) .ge. 3) then
 
@@ -414,9 +414,9 @@ program  process_NASALaRC_cloud
                 !xxxdist(i) = xdist(ii1,jj1,i)
               enddo
               call sortmed(xxxdist,index(ii1,jj1),jndex,fr)
-              w_pcld(im) = Pxx(ii1,jj1,jndex(1))
-              w_tcld(im) = Txx(ii1,jj1,jndex(1))
-              w_lwp(im) = WPxx(ii1,jj1,jndex(1))
+              w_pcld(1,im) = Pxx(ii1,jj1,jndex(1))
+              w_tcld(1,im) = Txx(ii1,jj1,jndex(1))
+              w_lwp(1,im) = WPxx(ii1,jj1,jndex(1))
             endif
 ! * Sort to find median value 
             if(ioption .eq. 2) then    !pick median 
@@ -426,24 +426,24 @@ program  process_NASALaRC_cloud
               enddo
               call sortmed(xxxdist,index(ii1,jj1),jndex,fr)
               med_pt = index(ii1,jj1)/2  + 1
-              w_pcld(im) = Pxx(ii1,jj1,jndex(med_pt)) ! hPa
-              w_tcld(im) = Txx(ii1,jj1,jndex(med_pt)) ! K
-              w_lwp(im) = WPxx(ii1,jj1,jndex(med_pt)) !  g/m^2
+              w_pcld(1,im) = Pxx(ii1,jj1,jndex(med_pt)) ! hPa
+              w_tcld(1,im) = Txx(ii1,jj1,jndex(med_pt)) ! K
+              w_lwp(1,im) = WPxx(ii1,jj1,jndex(med_pt)) !  g/m^2
             endif   ! pick median
 !
 ! missing pcld
-            if (w_pcld(im).eq.-20) then
-               w_pcld(im) = 1013. ! hPa - no cloud
-               w_frac(im)=0.0
-               nlev_cld(im) = 0
+            if (w_pcld(1,im).eq.-20) then
+               w_pcld(1,im) = 1013. ! hPa - no cloud
+               w_frac(1,im)=0.0
+               nlev_cld(1,im) = 0
 ! cloud fraction based on phase (0 are clear), what about -9 ????
-            elseif( w_pcld(im) < 1012.99) then
+            elseif( w_pcld(1,im) < 1012.99) then
                cfov = 0
                do i=1,index(ii1,jj1)
                  if(PHxx(ii1,jj1,i) .gt. 0.1) cfov = cfov + 1
                enddo
-               w_frac(im) = float(cfov)/(max(1,index(ii1,jj1)))     !  fraction
-               if( w_frac(im) > 0.01 ) nlev_cld(im) = 1
+               w_frac(1,im) = float(cfov)/(max(1,index(ii1,jj1)))     !  fraction
+               if( w_frac(1,im) > 0.01 ) nlev_cld(1,im) = 1
             endif
          endif   ! index > 3
        endif   ! check to see if index in map projection domain
@@ -462,12 +462,12 @@ program  process_NASALaRC_cloud
      write(6,*)
      write(6,'(8a12)') 'im', 'lat', 'lon', 'w_pcld', 'w_tcld', 'w_frac', 'w_lwp ', 'nlev_cld'
      do im=1,nCell,nCell/50
-        write(6,'(I12,5f12.3,f12.4,I12)') im,lat_m(im),lon_m(im),w_pcld(im),&
-                w_tcld(im),w_frac(im),w_lwp(im),nlev_cld(im)
+        write(6,'(I12,5f12.3,f12.4,I12)') im,lat_m(im),lon_m(im),w_pcld(1,im),&
+                w_tcld(1,im),w_frac(1,im),w_lwp(1,im),nlev_cld(1,im)
      enddo
 !
      open(15, file='NASALaRC_cloud4mpas.bin',form='unformatted')
-        write(15)  nlon,nlat,nCell
+        write(15)  1,nCell
         write(15)  index
         write(15)  w_pcld
         write(15)  w_tcld
@@ -482,7 +482,7 @@ program  process_NASALaRC_cloud
        open(13, file="nasa_larc_obs_interp.txt", status="new", action="write")
        write(13,'(7a12)') 'lat', 'lon', 'ptop', 'teff', 'lwp', 'frac', 'nlev_cld'
        do j=1,nCell
-          write(13,'(4f12.3,f12.4,f12.4,I12)') lat_m(j),lon_m(j),w_pcld(j),w_tcld(j),w_lwp(j),w_frac(j),nlev_cld(j)
+          write(13,'(4f12.3,f12.4,f12.4,I12)') lat_m(j),lon_m(j),w_pcld(1,j),w_tcld(1,j),w_lwp(1,j),w_frac(1,j),nlev_cld(1,j)
        enddo
        close(13)
      endif

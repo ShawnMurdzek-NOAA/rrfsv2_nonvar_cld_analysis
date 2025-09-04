@@ -4,9 +4,12 @@
 FFLAGS=-diag-disable=10448 -traceback
 
 # Components of program
-SRC=NonVarCldLib/read_Surface.f90 \
+SRC=NonVarCldLib/map_ctp.f90 \
+    NonVarCldLib/map_ctp_lar.f90 \
+    NonVarCldLib/read_Surface.f90 \
     NonVarCldLib/read_radar_ref.f90 \
     NonVarCldLib/read_Lightning_cld.f90 \
+    NonVarCldLib/read_nasalarc_cld.f90 \
     pbl_height.f90 \
     rapidrefresh_cldsurf_mod.f90 \
     namelist_mod.f90 \
@@ -34,4 +37,4 @@ mpas_nonvarcldana.exe: $(OBJ)
 	$(FC) $(FFLAGS) -o $@ $(OBJ) $(SHARE) $(LIBS)
 
 clean:
-	rm -f *.o *.mod mpas_nonvarcldana.exe 
+	rm -f *.o *.mod ./NonVarCldLib/*.o NonVarCLdLib/*.mod mpas_nonvarcldana.exe 
