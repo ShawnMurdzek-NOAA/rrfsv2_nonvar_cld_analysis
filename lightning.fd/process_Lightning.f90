@@ -407,17 +407,23 @@ program process_Lightning
      write(*,*) ' The number of obs used is:', numNLDN_used
 
 !  Write out results
+!  Entries in lightning_out include:
+!    1: Always 1 (formerly longitude)
+!    2: Cell index (formerly latitude)
+!    3: Time
+!    4: Lightning number
 
-     allocate(lightning_out(3,nCell))
+     allocate(lightning_out(4,nCell))
      numlightning=0
      do i=1,nCell
        if(lightning(i) > 0 ) then
          numlightning=numlightning+1
-         lightning_out(1,numlightning)=float(i)
-         lightning_out(2,numlightning)=float(minute)/60.0
-         lightning_out(3,numlightning)=lightning(i)
-         if(lightning_out(3,numlightning) > 1000.0 ) then
-            lightning_out(3,numlightning)=1000.0
+         lightning_out(1,numlightning)=1
+         lightning_out(2,numlightning)=float(i)
+         lightning_out(3,numlightning)=float(minute)/60.0
+         lightning_out(4,numlightning)=lightning(i)
+         if(lightning_out(4,numlightning) > 1000.0 ) then
+            lightning_out(4,numlightning)=1000.0
             write(6,*) 'high lightning strokes=',lightning(i),i
          endif
 !        write(*,*) numlightning,i,j,lightning(i,j)
@@ -426,8 +432,8 @@ program process_Lightning
 
      write(*,*) 'Write out results for MPAS:',numlightning
      OPEN(10,file='LightningInMPAS.dat',form='unformatted')
-      write(10) 3,nCell,numlightning,1,2
-      write(10) ((real(lightning_out(i,j)),i=1,3),j=1,numlightning)
+      write(10) 4,1,nCell,numlightning,1,2
+      write(10) ((real(lightning_out(i,j)),i=1,4),j=1,numlightning)
       write(10) lightning
      close(10)
 

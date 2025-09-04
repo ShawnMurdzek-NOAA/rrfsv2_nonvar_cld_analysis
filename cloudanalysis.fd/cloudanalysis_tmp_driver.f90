@@ -418,6 +418,14 @@ program cloudanalysis
      istat_radar=1
      close(lunin)
   endif
+!
+!  1.2.8 read in lightning
+!
+  fileexist=.false.
+  obsfile='LightningInMPAS.dat'
+  call read_Lightning2cld(obsfile,lon2,lat2,istart,jstart,lightning, &
+                          istat_lightning)
+  write(6,*) 'gsdcloudanalysis: Lightning is read in successfully'
 
 
 
