@@ -242,18 +242,20 @@ SUBROUTINE cloudCover_NESDIS(mype,regional_time,nlat,nlon,nsig,&
 
    do j=1,nlat
      do i=1,nlon
-       jp1 = min(j+1,nlat)
-       jm1 = max(j-1,1   )
-       ip1 = min(i+1,nlon)
-       im1 = max(i-1,1   )
+
+! Turn off neighborhood search when computing tsmin
+!       jp1 = min(j+1,nlat)
+!       jm1 = max(j-1,1   )
+!       ip1 = min(i+1,nlon)
+!       im1 = max(i-1,1   )
        tsmin = soil_tbk(i,j)
 !  ---  Determine min skin temp in 3x3 around grid point.
 !       This is to detect nearby presence of coastline.
-       do j1 = jm1,jp1
-         do i1 = im1,ip1
-            tsmin = min(tsmin,soil_tbk(i1,j1) )
-         end do
-       end do
+!       do j1 = jm1,jp1
+!         do i1 = im1,ip1
+!            tsmin = min(tsmin,soil_tbk(i1,j1) )
+!         end do
+!       end do
 
        if ( w_frac(i,j) > -1._r_kind                  &
             .and. (sat_tem(i,j)-soil_tbk(i,j)) > 4._r_kind    &
@@ -453,48 +455,48 @@ SUBROUTINE cloudCover_NESDIS(mype,regional_time,nlat,nlon,nsig,&
 !
 ! --- Make sure that any cloud point has another cloud point nearby.
 !       Otherwise, get rid of it.
-   do j=1,nlat
-     do i=1,nlon
-        if (sat_ctp(i,j)< 1010._r_kind .and. sat_ctp(i,j)>50._r_kind) then
-          ibuddy = 0
-          do j1=max(j-1,1),min(j+1,nlat)
-            do i1=max(i-1,1),min(i+1,nlon)
-              if (sat_ctp(i1,j1)<1010._r_kind .and. sat_ctp(i1,j1)>50._r_kind)  ibuddy = 1
-            end do
-          end do
-          if (ibuddy==0) then
-               w_frac(i,j)   = -99999._r_kind
-               sat_tem(i,j)  =  99999._r_kind
-               sat_ctp(i,j)  =  99999._r_kind
-               nlev_cld(i,j) = -999
-               npts_ctp_nobuddy = npts_ctp_nobuddy + 1
-          end if
-        end if
-        if (sat_ctp(i,j)>1010._r_kind .and. sat_ctp(i,j) <1100._r_kind) then
-            ibuddy = 0
-            do j1=max(j-1,1),min(j+1,nlat)
-              do i1=max(i-1,1),min(i+1,nlon)
-                if (sat_ctp(i1,j1) > 1010._r_kind .and. sat_ctp(i1,j1) <1100._r_kind) ibuddy = 1
-              end do
-            end do
-            if (ibuddy == 0) then
-               w_frac(i,j)   = -99999._r_kind
-               sat_tem(i,j)  =  99999._r_kind
-               sat_ctp(i,j)  =  99999._r_kind
-               nlev_cld(i,j) = -999
-               npts_clr_nobuddy = npts_clr_nobuddy + 1
-            end if
-        end if
-     enddo
-   enddo
-
-   if(mype==0) then
-    write(6,*) 'cloudCover_NESDIS: Flag CTP - no contiguous points also w/ cloud, no=',  &
-           npts_ctp_nobuddy
-
-    write(6,*) 'cloudCover_NESDIS: Flag CTP - no contiguous points also w/ clear, no=', &
-           npts_clr_nobuddy
-    endif
+!   do j=1,nlat
+!     do i=1,nlon
+!        if (sat_ctp(i,j)< 1010._r_kind .and. sat_ctp(i,j)>50._r_kind) then
+!          ibuddy = 0
+!          do j1=max(j-1,1),min(j+1,nlat)
+!            do i1=max(i-1,1),min(i+1,nlon)
+!              if (sat_ctp(i1,j1)<1010._r_kind .and. sat_ctp(i1,j1)>50._r_kind)  ibuddy = 1
+!            end do
+!          end do
+!          if (ibuddy==0) then
+!               w_frac(i,j)   = -99999._r_kind
+!               sat_tem(i,j)  =  99999._r_kind
+!               sat_ctp(i,j)  =  99999._r_kind
+!               nlev_cld(i,j) = -999
+!               npts_ctp_nobuddy = npts_ctp_nobuddy + 1
+!          end if
+!        end if
+!        if (sat_ctp(i,j)>1010._r_kind .and. sat_ctp(i,j) <1100._r_kind) then
+!            ibuddy = 0
+!            do j1=max(j-1,1),min(j+1,nlat)
+!              do i1=max(i-1,1),min(i+1,nlon)
+!                if (sat_ctp(i1,j1) > 1010._r_kind .and. sat_ctp(i1,j1) <1100._r_kind) ibuddy = 1
+!              end do
+!            end do
+!            if (ibuddy == 0) then
+!               w_frac(i,j)   = -99999._r_kind
+!               sat_tem(i,j)  =  99999._r_kind
+!               sat_ctp(i,j)  =  99999._r_kind
+!               nlev_cld(i,j) = -999
+!               npts_clr_nobuddy = npts_clr_nobuddy + 1
+!            end if
+!        end if
+!     enddo
+!   enddo
+!
+!   if(mype==0) then
+!    write(6,*) 'cloudCover_NESDIS: Flag CTP - no contiguous points also w/ cloud, no=',  &
+!           npts_ctp_nobuddy
+!
+!    write(6,*) 'cloudCover_NESDIS: Flag CTP - no contiguous points also w/ clear, no=', &
+!           npts_clr_nobuddy
+!    endif
 
 !
 !     *****************************************************************

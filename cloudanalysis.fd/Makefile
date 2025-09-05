@@ -17,6 +17,14 @@ SRC=NonVarCldLib/map_ctp.f90 \
     NonVarCldLib/BckgrndCC.f90 \
     NonVarCldLib/cloudCover_Surface.f90 \
     NonVarCldLib/cloudCover_NESDIS.f90 \
+    NonVarCldLib/cloudLayers.f90 \
+    NonVarCldLib/mthermo.f90 \
+    NonVarCldLib/ARPS_cldLib.f90 \
+    NonVarCldLib/cloudType.f90 \
+    NonVarCldLib/cloudLWC.f90 \
+    NonVarCldLib/PrecipType.f90 \
+    NonVarCldLib/hydro_mxr_thompson.f90 \
+    NonVarCldLib/cloud_saturation.f90 \
     pbl_height.f90 \
     rapidrefresh_cldsurf_mod.f90 \
     namelist_mod.f90 \

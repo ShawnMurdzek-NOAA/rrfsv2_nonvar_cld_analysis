@@ -356,8 +356,8 @@ SUBROUTINE cloudLWC_Cumulus(nlat,nlon,nsig,h_bk,t_bk,p_bk,                      
 !
 !-----------------------------------------------------------------------
 !
-  DO j = 2,nlat-1
-    DO i = 2,nlon-1
+  DO j = 1,nlat
+    DO i = 1,nlon
 !
       DO k = 1,nsig                      ! Initialize
         t_1d(k) = t_bk(i,j,k)*(p_bk(i,j,k)/h1000)**rd_over_cp

@@ -293,4 +293,63 @@ subroutine read_MPAS_2D_real(mpasfile, ndim1, ndim2, field, data, rem_dim)
 
 end subroutine read_MPAS_2D_real
 
+subroutine update_MPAS_2D_real(mpasfile, ndim1, ndim2, field, data, add_dim)
+!---------------------------------------------------------------------------------------------------
+!
+! Write a 2D real field to an MPAS netCDF file
+!
+! Note: The field must already exist in the netCDF file
+!
+! Inputs
+!   mpasfile : string
+!     MPAS netCDF file name
+!   ndim1 : integer
+!     Length of the first dimension for field
+!   ndim2 : integer
+!     Length of the second dimension for field
+!   field : string
+!     2D real field to read
+!   add_dim : boolean, optional
+!     Option to explicitly add a single element in the last dimension (usually time)
+!
+! Outputs
+!   data : real
+!     Real field
+! 
+!
+! shawn.s.murdzek@noaa.gov
+!---------------------------------------------------------------------------------------------------
+
+  implicit none
+
+  character(len=100), intent(in) :: mpasfile
+  integer, intent(in) :: ndim1,ndim2
+  character(len=50), intent(in) :: field
+  logical, intent(in), optional :: add_dim
+  real, intent(in) :: data(ndim1,ndim2)
+
+  integer :: ncid, stat, fieldid
+  logical :: add_last_dim
+  character(len=50) :: routine_name
+
+  add_last_dim=.false.
+  if (present(add_dim)) add_last_dim=add_dim
+
+  routine_name = 'update_MPAS_2D_real'
+
+  stat = nf90_open(mpasfile, nf90_write, ncid)
+  call handle_nc_error(stat, routine_name)
+  stat = nf90_inq_varid(ncid, field, fieldid)
+  call handle_nc_error(stat, routine_name)
+  if ( add_last_dim ) then
+    stat = nf90_put_var(ncid, fieldid, data, start=(/ 1, 1, 1 /), count=(/ ndim1, ndim2, 1 /))
+  else
+    stat = nf90_put_var(ncid, fieldid, data)
+  endif
+  call handle_nc_error(stat, routine_name)
+  stat = nf90_close(ncid)
+  call handle_nc_error(stat, routine_name)
+
+end subroutine update_MPAS_2D_real
+
 end module mpasio

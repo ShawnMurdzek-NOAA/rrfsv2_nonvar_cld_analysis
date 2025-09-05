@@ -16,7 +16,8 @@ programs=( share/wps_map_utils
 	   larccld.fd
 	   lightning.fd
 	   metarcld.fd
-	   mosaic.fd )
+	   mosaic.fd
+	   cloudanalysis.fd )
 
 top_dir=`pwd`
 for p in ${programs[@]}; do

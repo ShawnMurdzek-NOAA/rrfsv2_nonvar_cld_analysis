@@ -34,6 +34,7 @@ module get_mpas_bk_mod
   use constants, only: rd,h1000,rd_over_cp,grav
   use constants, only: rad2deg
   use mpasio, only: read_MPAS_dim,read_MPAS_2D_real,read_MPAS_1D_real,read_MPAS_1D_int
+  use mpasio, only: update_MPAS_2D_real
 
   implicit none
   private
@@ -46,6 +47,8 @@ module get_mpas_bk_mod
 !
   public :: read_mpas_init
   public :: read_mpas_bk
+  public :: update_mpas
+  public :: release_mem_mpas
 !
 !
 ! background
@@ -424,6 +427,125 @@ contains
 
   end subroutine read_mpas_bk
 
+  subroutine update_mpas(mype)
+!---------------------------------------------------------------------------------------------------
+!
+! Update MPAS background using output from cloudanalysis.fd
+!
+! Inputs
+!   mype : integer
+!     Processor number
+!
+! shawn.s.murdzek@noaa.gov
+!---------------------------------------------------------------------------------------------------
+
+    implicit none
+
+    integer, intent(in) :: mype
+
+    character(len=50) :: varname
+
+    write(6,*)
+    write(6,*) '------------------------------------------------------------'
+    write(6,*) 'Updating MPAS background'
+    write(6,*)
+
+! Potential temperature
+    varname = 'theta'
+    call gather_write_2d_field(mype,mpasout_fname,varname,t_bk,write_minmax=.true.)
+
+! Water vapor mass mixing ratio
+    varname = 'qv'
+    call gather_write_2d_field(mype,mpasout_fname,varname,q_bk,write_minmax=.true.)
+
+! Cloud water mass mixing ratio
+    varname = 'qc'
+    call gather_write_2d_field(mype,mpasout_fname,varname,ges_ql)
+
+! Cloud ice mass mixing ratio
+    varname = 'qi'
+    call gather_write_2d_field(mype,mpasout_fname,varname,ges_qi)
+
+! Rain mass mixing ratio
+    varname = 'qr'
+    call gather_write_2d_field(mype,mpasout_fname,varname,ges_qr)
+
+! Snow mass mixing ratio
+    varname = 'qs'
+    call gather_write_2d_field(mype,mpasout_fname,varname,ges_qs)
+
+! Graupel mass mixing ratio
+    varname = 'qg'
+    call gather_write_2d_field(mype,mpasout_fname,varname,ges_qg)
+
+! Rain number concentration
+    varname = 'nr'
+    call gather_write_2d_field(mype,mpasout_fname,varname,ges_qnr)
+
+! Cloud ice number concentration
+    varname = 'ni'
+    call gather_write_2d_field(mype,mpasout_fname,varname,ges_qni)
+
+! Cloud water number concentration
+    varname = 'nc'
+    call gather_write_2d_field(mype,mpasout_fname,varname,ges_qnc)
+
+  end subroutine update_mpas
+
+  subroutine release_mem_mpas
+!---------------------------------------------------------------------------------------------------
+!
+! Deallocate MPAS background arrays used by cloudanalysis.fd
+!
+!
+! shawn.s.murdzek@noaa.gov
+!---------------------------------------------------------------------------------------------------
+
+    implicit none
+
+! Thermodynamic background fields
+    if(allocated(t_bk)) deallocate(t_bk)
+    if(allocated(h_bk)) deallocate(h_bk)
+    if(allocated(p_bk)) deallocate(p_bk)
+    if(allocated(ps_bk))deallocate(ps_bk)
+    if(allocated(zh))   deallocate(zh)
+    if(allocated(q_bk)) deallocate(q_bk)
+    if(allocated(pblh)) deallocate(pblh)
+
+! Hydrometeor fields
+    if(allocated(ges_ql))  deallocate(ges_ql)
+    if(allocated(ges_qi))  deallocate(ges_qi)
+    if(allocated(ges_qr))  deallocate(ges_qr)
+    if(allocated(ges_qs))  deallocate(ges_qs)
+    if(allocated(ges_qg))  deallocate(ges_qg)
+    if(allocated(ges_qnr)) deallocate(ges_qnr)
+    if(allocated(ges_qni)) deallocate(ges_qni)
+    if(allocated(ges_qnc)) deallocate(ges_qnc)
+    if(allocated(ges_qcf)) deallocate(ges_qcf)
+
+! Hydrometeor uncertainties
+!    if(l_cld_uncertainty) then
+!      if(allocated(unc_ql))  deallocate(unc_ql)
+!      if(allocated(unc_qi))  deallocate(unc_qi)
+!      if(allocated(unc_qr))  deallocate(unc_qr)
+!      if(allocated(unc_qs))  deallocate(unc_qs)
+!      if(allocated(unc_qg))  deallocate(unc_qg)
+!    endif
+
+! Extra fields for cloudCover_NESDIS subroutine
+    if(allocated(xlon))     deallocate(xlon)
+    if(allocated(xlat))     deallocate(xlat)
+    if(allocated(xland))    deallocate(xland)
+    if(allocated(soiltbk))  deallocate(soiltbk)
+
+! Arrays used for scattering fields using MPI
+    if(allocated(displ_1d))       deallocate(displ_1d)
+    if(allocated(displ_2d))       deallocate(displ_2d)
+    if(allocated(counts_send_1d)) deallocate(counts_send_1d)
+    if(allocated(counts_send_2d)) deallocate(counts_send_2d)
+
+  end subroutine release_mem_mpas
+
   subroutine read_scatter_1d_field(mype, fname, varname, sub, rem_dim)
 !---------------------------------------------------------------------------------------------------
 !
@@ -545,5 +667,82 @@ contains
     endif
 
   end subroutine read_scatter_2d_field
+
+  subroutine gather_write_2d_field(mype, fname, varname, sub, add_dim, write_minmax)
+!---------------------------------------------------------------------------------------------------
+!
+! Gather a 2D MPAS field from all processors, then write to a netCDF file
+!
+! Inputs
+!   mype : integer
+!     Processor number
+!   fname : string
+!     netCDF file to read
+!   varname : string
+!     MPAS variable name to read
+!   sub : 3D array
+!     Subset of the full MPAS 2D field on each processor. First dimension should always be 1
+!   add_dim : boolean, optional
+!     Option to explicitly create a third and final dimension with length 1 (usually time)
+!   write_minmax : boolean, optional
+!     Option to print min/max values from the root processor
+!
+! shawn.s.murdzek@noaa.gov
+!---------------------------------------------------------------------------------------------------
+
+    implicit none
+
+    integer, intent(in) :: mype
+    character(len=100), intent(in) :: fname
+    character(len=50), intent(in) :: varname
+    logical, intent(in), optional :: add_dim, write_minmax
+    real(r_single), intent(in) :: sub(1,nCell,nz)
+
+    real(r_single), allocatable :: tmp_full(:,:)
+    real(r_single), allocatable :: tmp(:,:)
+    integer :: i,ierror
+    logical :: add_last_dim,do_write
+
+    add_last_dim=.true.
+    if (present(add_dim)) add_last_dim=add_dim
+
+    do_write=.false.
+    if (present(write_minmax)) do_write=write_minmax
+
+! Allocate temporary arrays
+    if (mype == 0) then
+      allocate(tmp_full(nz,nCell_full))
+    endif
+    allocate(tmp(nz,nCell))
+
+! Send data from all processors to the root processor
+    do i=1,nz
+      tmp(i,:) = sub(1,:,i)
+    enddo
+    call MPI_BARRIER(mpi_comm_world,ierror)
+    call MPI_GATHERV(tmp,nCell*nz,MPI_REAL, &
+                     tmp_full,counts_send_2d,displ_2d,MPI_REAL,0,mpi_comm_world,ierror)
+    call MPI_BARRIER(mpi_comm_world,ierror)
+
+
+! Write field from root processor to netCDF file
+    if (mype == 0) then
+      call update_MPAS_2D_real(fname, nz, nCell_full, varname, tmp_full, add_dim=add_last_dim)
+      if (do_write) then
+        write(6,'(4A12)') 'variable','lvl','max','min'
+        do i=1,nz
+          write(6,'(A12,I12,2E12.4)') trim(varname), i, maxval(tmp_full(i,:)), minval(tmp_full(i,:))
+        enddo
+      endif
+    endif
+
+! Clean up
+    call MPI_BARRIER(mpi_comm_world,ierror)
+    if (mype == 0) then
+      deallocate(tmp_full)
+    endif
+    deallocate(tmp)
+
+  end subroutine gather_write_2d_field
 
 end module get_mpas_bk_mod

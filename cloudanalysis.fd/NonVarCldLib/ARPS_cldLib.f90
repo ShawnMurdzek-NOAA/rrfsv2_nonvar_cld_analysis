@@ -817,8 +817,8 @@ SUBROUTINE pcp_type_3d (nx,ny,nz,temp_3d,rh_3d,p_pa_3d                  &
   n_sl = 0
   n_last = 0
 
-  DO j = 1,ny-1
-    DO i = 1,nx-1
+  DO j = 1,ny
+    DO i = 1,nx
 
       iflag_melt = 0
       iflag_refreez = 0
@@ -985,8 +985,8 @@ SUBROUTINE pcp_type_3d (nx,ny,nz,temp_3d,rh_3d,p_pa_3d                  &
     END DO ! j
   END DO ! i
 
-  DO j = 1,ny-1
-    DO i = 1,nx-1
+  DO j = 1,ny
+    DO i = 1,nx
       DO k = 1,nz-1
         IF(radar_3d(i,j,k) >= 50._r_kind) THEN
           iprecip_type = 5

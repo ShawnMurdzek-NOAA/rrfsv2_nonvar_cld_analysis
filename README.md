@@ -35,3 +35,5 @@ The remaining directories are as follows:
 ## Comparison to FV3
 
 The chief difference between MPAS and FV3 that is relevant for the nonvariational cloud analysis is that FV3 uses a 3D dimensional grid (x, y, z) for 3D fields whereas MPAS uses a 2D dimensional grid (cell, z). In an effort to minimize the number of files that need to be changed when adapting the nonvariational cloud analysis for MPAS, many of the arrays in `cloudanalysis.fd` are still 3D with dimensions `(lon2, lat2, nsig)`. For the MPAS implementation here, `lon2 = 1, lat2 = nCell, nsig = nz`. Thus, these 3D arrays are effectively 2D.
+
+Another notable difference is that there are several instances in the nonvar cloud analysis for FV3 where it is assumed that there is a ring of buffer points around the 2D spatial domain (e.g., loops over the x and y dimensions go from 2 to lon2-1). There are no buffer points in the MPAS domain, so these loops are changed so that they go from 1 to lon2 or lat2.
