@@ -1283,32 +1283,32 @@ program cloudanalysis
 ! (Oct. 14, 2010)
 !
 ! T/Q update
-  do k=1,nsig
-     do j=1,lat2
+! 
+! SSM: Previous code versions converted t_bk to temperature and q_bk to specific
+! humidity. For MPAS, keep t_bk as potential temperature and q_bk as mixing ratio
+  ! =0 no T/Q adjustment
+  if(i_T_Q_adjust==0) then
+    write(6,*) 'gsdcloudanalysis: no T/Q adjustment',mype
+    t_bk=ges_tv
+    q_bk=ges_q
+  ! =1 default T/Q adjustment
+  elseif(i_T_Q_adjust==1) then
+    write(6,*) 'gsdcloudanalysis: default T/Q adjustment',mype
+  ! =2 T/Q adjustment only for case of clearing
+  elseif(i_T_Q_adjust==2) then
+    write(6,*) 'gsdcloudanalysis: T/Q adjustment for cloud clearing',mype
+    do k=1,nsig
+      do j=1,lat2
         do i=1,lon2
-           ! =0 no T/Q adjustment
-           if(i_T_Q_adjust==0) then
-              write(6,*) 'gsdcloudanalysis: no T/Q adjustment',mype
-              t_bk=ges_tv
-              q_bk=ges_q
-           ! =1 default T/Q adjustment
-           elseif(i_T_Q_adjust==1) then
-              !t_bk(i,j,k)=t_bk(i,j,k)*(p_bk(i,j,k)/h1000)**rd_over_cp * (one+fv*q_bk(i,j,k))
-              t_bk(i,j,k)=t_bk(i,j,k)*(p_bk(i,j,k)/h1000)**rd_over_cp
-              ! Here q is mixing ratio kg/kg, need to convert to specific humidity
-              q_bk(i,j,k)=q_bk(i,j,k)/(1+q_bk(i,j,k))
-           ! =2 T/Q adjustment only for case of clearing
-           elseif(i_T_Q_adjust==2) then
-              !t_bk(i,j,k)=max(ges_tv(i,j,k),t_bk(i,j,k)*(p_bk(i,j,k)/h1000)**rd_over_cp * (one+fv*q_bk(i,j,k)))
-              t_bk(i,j,k)=max(ges_tv(i,j,k),t_bk(i,j,k)*(p_bk(i,j,k)/h1000)**rd_over_cp)
-              ! Here q is mixing ratio kg/kg, need to convert to specific humidity
-              q_bk(i,j,k)=min(ges_q(i,j,k),q_bk(i,j,k)/(1+q_bk(i,j,k)))
-           else
-              write(6,*) 'gsdcloudanalysis: WARNING no T/Q adjustment, check i_T_Q_adjust value',mype
-           endif
+          t_bk(i,j,k)=max(ges_tv(i,j,k),t_bk(i,j,k))
+          q_bk(i,j,k)=min(ges_q(i,j,k),q_bk(i,j,k))
         enddo
-     enddo
-  enddo
+      enddo
+    enddo
+  else
+    write(6,*) 'gsdcloudanalysis: WARNING no T/Q adjustment, check i_T_Q_adjust value',mype
+  endif
+
   if(i_T_Q_adjust==2 .or. i_T_Q_adjust==0) then
      deallocate(ges_tv)
      deallocate(ges_q)
