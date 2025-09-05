@@ -60,22 +60,13 @@ program cloudanalysis
 
   use namelist_mod, only: load_namelist
   use namelist_mod, only: iyear,imonth,iday,ihour,iminute,isecond
-  use namelist_mod, only: fv3_io_layout_y
-  use namelist_mod, only: fv3sar_bg_opt
 
-  use get_fv3sar_bk_parall_mod, only: lon2,lat2,nsig
-  use get_fv3sar_bk_parall_mod, only: mype_istart,mype_jstart
-  use get_fv3sar_bk_parall_mod, only: t_bk,h_bk,p_bk,ps_bk,zh,q_bk,pblh
-  use get_fv3sar_bk_parall_mod, only: read_fv3sar_bk_full
-  use get_fv3sar_bk_parall_mod, only: ges_ql,ges_qi,ges_qr,ges_qs,ges_qg, &
-                               ges_qnr,ges_qni,ges_qnc,ges_qcf
-  use get_fv3sar_bk_parall_mod, only: unc_ql,unc_qi,unc_qr,unc_qs,unc_qg
-  use get_fv3sar_bk_parall_mod, only: xlon,xlat,xland,soiltbk
-  use get_fv3sar_bk_parall_mod, only: release_mem_fv3sar
-  use get_fv3sar_bk_parall_mod, only: update_fv3sar,update_fv3sar_unc
-  use get_fv3sar_bk_parall_mod, only: fv3_io_layout_end 
-  use get_fv3sar_bk_parall_mod, only: read_fv3sar_init 
-  use gsi_rfv3io_tten_mod, only: nlon_regional,nlat_regional,nsig_regional
+  use get_mpas_bk_mod, only: nCell_full,nCell,nz,lon2,lat2,nsig
+  use get_mpas_bk_mod, only: displ_1d,displ_2d,counts_send_1d,counts_send_2d
+  use get_mpas_bk_mod, only: t_bk,h_bk,p_bk,ps_bk,zh,q_bk,pblh
+  use get_mpas_bk_mod, only: ges_ql,ges_qi,ges_qr,ges_qs,ges_qg,ges_qnr,ges_qni,ges_qnc,ges_qcf
+  use get_mpas_bk_mod, only: xlon,xlat,xland,soiltbk
+  use get_mpas_bk_mod, only: read_mpas_init,read_mpas_bk,update_mpas,release_mem_mpas
 !
   implicit none
 
@@ -96,7 +87,7 @@ program cloudanalysis
 !
   character(len=7) :: obstype
   character(len=20):: isis
-  integer :: nreal,nchanl,ilat,ilon,ndatafv3
+  integer :: nreal,nchanl,ilat,ilon,ndata_model
   integer :: istart,jstart
 !
   integer(i_kind) :: nvarcld_p
@@ -130,7 +121,7 @@ program cloudanalysis
   real(r_single),allocatable :: ref_mos_3d(:,:,:)
   real(r_single),allocatable :: ref_mos_3d_tten(:,:,:)
   real(r_single),allocatable :: ref_mosaic31(:,:,:)
-  integer(i_kind)          :: nmsclvl_radar 
+  integer(i_kind)          :: nmsclvl_radar
 !
 !  GOES - NESDIS cloud products : 2d fields
 !
@@ -213,7 +204,7 @@ program cloudanalysis
 !  misc.
 !
   integer(i_kind) :: ytotal,ybegin,yend
-  integer(i_kind) :: i,j,k,kk
+  integer(i_kind) :: i,j,k
   integer(i_kind) :: iglobal,jglobal,ilocal,jlocal
   logical :: ifindomain
   integer(i_kind) :: imaxlvl_ref
@@ -275,11 +266,13 @@ program cloudanalysis
   call load_namelist(mype)
 !
 ! get background ready
+! Note that MPAS still uses 3D arrays even though the data is 2D, and the arrays
+! still have dimensions (lon2, lat2, nsig)
+! For MPAS, lon2 = 1, lat2 = nCell, nsig = nz
 !
-  call read_fv3sar_init(fv3sar_bg_opt,mype,npe)
-  call mpi_barrier(MPI_COMM_WORLD,ierror)
-
-  call read_fv3sar_bk_full(mype)
+  call read_mpas_init(mype,npe)
+  call MPI_BARRIER(mpi_comm_world,ierror)
+  call read_mpas_bk(mype)
 !
 !
   krad_bot=7.0_r_single
@@ -305,6 +298,7 @@ program cloudanalysis
   print_verbose=.false.
   if (verbose) print_verbose=.true.
 
+  write(6,*)
   write(6,*) "analysis time is=",iyear,imonth,iday,ihour,iminute,isecond
   regional_time(1)=iyear
   regional_time(2)=imonth
@@ -312,9 +306,7 @@ program cloudanalysis
   regional_time(4)=ihour
   regional_time(5)=iminute
   regional_time(6)=isecond
-  
-  write(6,*) 'fv3_io_layout_y=',fv3_io_layout_y
-  write(6,*) 'fv3_io_layout_end=',fv3_io_layout_end
+
 !  call load_gsdpbl_hgt(mype)
 !
 !  check consistency of the options
@@ -341,16 +333,6 @@ program cloudanalysis
 !! 1.1   allocate observation fields
 !!
 !
-  ybegin=1
-  yend=nlat_regional
-  ytotal=nlat_regional
-  if(fv3_io_layout_y > 1) then
-     ybegin=1
-     if(mype>0) ybegin=fv3_io_layout_end(mype)+1
-     yend=fv3_io_layout_end(mype+1)
-     ytotal=fv3_io_layout_end(fv3_io_layout_y)
-  endif
-
   allocate(ref_mos_3d(lon2,lat2,nsig))
   allocate(ref_mos_3d_tten(lon2,lat2,nsig))
   ref_mos_3d=miss_obs_real
@@ -379,18 +361,24 @@ program cloudanalysis
 
 !!  1.2.2 read in surface observations
 !!
-  istart=mype_istart
-  jstart=mype_jstart
+!!  Note that OI is always 1 and OJ is the MPAS cell index
+!!
+!!  Also note that the subroutines here to read obs assume there is a 1-grid point buffer
+!!  included in the domain defined by lon2 and lat2. That is why we need to add 2 to istart
+!!  and jstart.
+!!
+  istart=displ_1d(mype+1)+2
+  jstart=2
   numsao=0
 !
   fileexist=.false.
-  obsfile='fv3_metarcloud.bin'
+  obsfile='mpas_metarcloud.bin'
   inquire(file=trim(obsfile),exist=fileexist)
   if(fileexist) then
      open(lunin, file=trim(obsfile),form='unformatted')
-     read(lunin) obstype,isis,nreal,nchanl,ilat,ilon,ndatafv3
-     write(6,*) 'metar cloud=',obstype,isis,nreal,nchanl,ilat,ilon,ndatafv3
-     numsao=ndatafv3
+     read(lunin) obstype,isis,nreal,nchanl,ilat,ilon,ndata_model
+     write(6,*) 'metar cloud=',obstype,isis,nreal,nchanl,ilat,ilon,ndata_model
+     numsao=ndata_model
      allocate(oi(numsao))
      allocate(oj(numsao))
      allocate(ocld(nvarcld_p,numsao))
@@ -404,6 +392,11 @@ program cloudanalysis
      call read_Surface(mype,lunin,istart,jstart,lon2,lat2, &
                        numsao,nvarcld_p,oi,oj,ocld,owx,oelvtn,&
                        odist,cstation,oistation,ojstation)
+
+! Immediately deallocate oistation and ojstation b/c they contain incorrect information
+     deallocate(oistation)
+     deallocate(ojstation)
+
      if(mype == 0) write(6,*) 'gsdcloudanalysis: ',                                  &
                       'Surface cloud observations are read in successfully'
      istat_surface=1
@@ -413,11 +406,7 @@ program cloudanalysis
 !!  1.2.6 read in reflectivity mosaic
 !!
   fileexist=.false.
-  if(fv3_io_layout_y==1) then
-    write(obsfile,'(a)') 'RefInGSI3D.dat_01'
-  else
-    write(obsfile,'(a,I4.4,a)') 'RefInGSI3D.dat.',mype,'_01'
-  endif
+  obsfile='RefInGSI3D.dat'
   write(6,*)
   write(6,*) 'processing ',trim(obsfile)
 
@@ -428,7 +417,6 @@ program cloudanalysis
      open(lunin, file=trim(obsfile),form='unformatted')
      allocate( ref_mosaic31(lon2,lat2,nmsclvl_radar) )
      ref_mosaic31=-99999.0_r_single
-
      call read_radar_ref_bin(mype,lunin,istart,jstart,lon2,lat2,nmsclvl_radar,ref_mosaic31)
      write(6,*) 'gsdcloudanalysis: ',                         &
                    ' radar reflectivity is read in successfully'
@@ -439,7 +427,7 @@ program cloudanalysis
 !  1.2.8 read in lightning
 !
   fileexist=.false.
-  obsfile='LightningInFV3LAM.dat'
+  obsfile='LightningInMPAS.dat'
   call read_Lightning2cld(obsfile,lon2,lat2,istart,jstart,lightning, &
                           istat_lightning)
   write(6,*) 'gsdcloudanalysis: Lightning is read in successfully'
@@ -447,7 +435,7 @@ program cloudanalysis
 !  1.2.9 read in NASA LaRC cloud products
 !
   fileexist=.false.
-  obsfile='NASALaRC_cloud4fv3.bin'
+  obsfile='NASALaRC_cloud4mpas.bin'
   inquire(file=trim(obsfile),exist=fileexist)
   if(fileexist) then
      open(lunin, file=trim(obsfile),form='unformatted')
@@ -460,15 +448,15 @@ program cloudanalysis
      istat_nasalarc = 1
      close(lunin)
   endif
-!
+! 
 !!
 !!  1.4  if there are NASA LaRC cloud products, use them to replace NESDIS ones.
 !!       So we use NASA LaRC data in the same way as NESDIS ones
 !!
   if(imerge_nesdis_nasalarc == 1 ) then
-     if(istat_nasalarc == 1 ) then
-        do j=2,lat2-1
-           do i=2,lon2-1
+     if(istat_nasalarc == 1 ) then      
+        do j=1,lat2
+           do i=1,lon2
              if(sat_ctp(i,j) < -99990.0) then   ! missing value is -999999.0
                 sat_ctp(i,j) = nasalarc_cld(i,j,1)
                 sat_tem(i,j) = nasalarc_cld(i,j,2)
@@ -487,15 +475,15 @@ program cloudanalysis
        nlev_cld(:,:)= int(nasalarc_cld(:,:,5))
        istat_nesdis =istat_nasalarc
      endif
-  elseif ( imerge_nesdis_nasalarc == 3) then
-       istat_nesdis = 0
-  endif
-!!
+  elseif ( imerge_nesdis_nasalarc == 3) then 
+       istat_nesdis = 0                      
+  endif                     
+!!                              
 !!
 !!  1.6 collect the cloud information from whole domain
 !!       and assign the background cloud to each METAR obs
 !!
-  allocate(sumqci(lon2,lat2,nsig))
+  allocate(sumqci(lon2,lat2,nsig)) 
   do k=1,nsig
      do j=1,lat2
         do i=1,lon2
@@ -508,7 +496,7 @@ program cloudanalysis
   allocate(kwatericemax(lon2,lat2))
   watericemax=0._r_kind
   wimaxstation=0.0_r_single
-  kwatericemax=-1
+  kwatericemax=-1 
   do j=1,lat2
      do i=1,lon2
        do k = 1,nsig
@@ -517,7 +505,7 @@ program cloudanalysis
        do k=1,nsig
           if (sumqci(i,j,k) > cloud_def_p .and. kwatericemax(i,j) == -1) then
              kwatericemax(i,j) = k
-          end if
+          end if  
        end do
      enddo
   enddo
@@ -570,7 +558,6 @@ program cloudanalysis
 !        endif
 !!     enddo
 !  endif
-
 !!
 !!  1.8 check if data available: if no data in this subdomain, return. 
 !!
@@ -678,7 +665,7 @@ program cloudanalysis
               numsao,nvarcld_p,numsao,oi,oj,ocld,owx,oelvtn,odist,        &
               cld_cover_3d,cld_type_3d,wthr_type_2d,pcp_type_3d,          &
               wimaxstation, kwatericemax,vis2qc)
-     write(6,*) 'gsdcloudanalysis:',                        &  
+     write(6,*) 'gsdcloudanalysis:',                        &
                    'success in cloud cover analysis using surface data'
   endif
 !
@@ -689,7 +676,7 @@ program cloudanalysis
                          l_cld_bld,cld_bld_hgt,                           &
                          build_cloud_frac_p,clear_cloud_frac_p,nlev_cld,  &
                          cld_cover_3d,cld_type_3d,wthr_type_2d,osfc_station_map)
-     write(6,*) 'gsdcloudanalysis:',                        & 
+     write(6,*) 'gsdcloudanalysis:',                        &
                    ' success in cloud cover analysis using NESDIS data'
   endif
 !  call MPI_Barrier(mpi_comm_world, ierror)
@@ -797,21 +784,17 @@ program cloudanalysis
 !
 !  call MPI_Barrier(mpi_comm_world, ierror)
   do k=1,nsig
-     ! The phy_data file uses vertical levels from bottom to top, opposite of
-     ! the other intermediate netcdf files and the expected direction in the
-     ! Fortran code. I use the kk index to reverse the direction. CSH
-     kk=nsig+1-k
      do j=1,lat2
         do i=1,lon2
            ! clean  cloud
-           if( cld_cover_3d(i,j,k) > -0.001_r_kind .and. cld_cover_3d(i,j,k) <= cld_clr_coverage) then 
+           if( cld_cover_3d(i,j,k) > -0.001_r_kind .and. cld_cover_3d(i,j,k) <= cld_clr_coverage) then
               cldwater_3d(i,j,k) = zero
               cldice_3d(i,j,k)   = zero
               nice_3d(i,j,k)     = zero
               nwater_3d(i,j,k)   = zero
               clean_count        = clean_count+1
            ! build cloud
-           elseif( cld_cover_3d(i,j,k) > cld_bld_coverage .and. cld_cover_3d(i,j,k) < 2.0_r_kind .and. ges_qcf(i,j,kk) < r_cloudfrac_threshold ) then
+           elseif( cld_cover_3d(i,j,k) > cld_bld_coverage .and. cld_cover_3d(i,j,k) < 2.0_r_kind .and. ges_qcf(i,j,k) < r_cloudfrac_threshold ) then
               cloudwater         =0.001_r_kind*cldwater_3d(i,j,k)
               cloudice           =0.001_r_kind*cldice_3d(i,j,k)
               cldwater_3d(i,j,k) = max(cloudwater,ges_ql(i,j,k))
@@ -829,7 +812,7 @@ program cloudanalysis
               endif
               build_count=build_count+1
            ! unknown or partial cloud, using background values
-           else  
+           else
               cldwater_3d(i,j,k) = ges_ql(i,j,k)
               cldice_3d(i,j,k)   = ges_qi(i,j,k)
               nice_3d(i,j,k)     = ges_qni(i,j,k)
@@ -872,7 +855,7 @@ program cloudanalysis
            if(ref_mos_3d(i,j,k) > zero ) then
 !             snow_3d(i,j,k) = MIN(max(max(snowtemp,zero)*0.001_r_kind,ges_qs(i,j,k)),qrlimit)
               snow_3d(i,j,k) = MIN(    max(snowtemp,zero)*0.001_r_kind               ,qrlimit)
-              raintemp = max(raintemp,zero)*0.001_r_kind  
+              raintemp = max(raintemp,zero)*0.001_r_kind
               if(raintemp <= qrlimit) then
                  rain_3d(i,j,k) = raintemp
                  nrain_3d(i,j,k)= nraintemp
@@ -880,7 +863,7 @@ program cloudanalysis
                  rain_3d(i,j,k) = qrlimit
                  nrain_3d(i,j,k)= nraintemp*(qrlimit/raintemp)
               endif
-           elseif( ref_mos_3d(i,j,k) <= zero .and. & 
+           elseif( ref_mos_3d(i,j,k) <= zero .and. &
                    ref_mos_3d(i,j,k) > -100.0_r_kind ) then
               rain_3d(i,j,k) = zero
               nrain_3d(i,j,k) = zero
@@ -895,7 +878,6 @@ program cloudanalysis
         end do
         end do
      end do
- 
 !    ---- verical check and adjustment to the analysis of precipitation
 !         in order to remove/reduce the backround reflectivity "ghost" in
 !         analysis.
@@ -992,7 +974,7 @@ program cloudanalysis
            end if
         end if
 
-     end if 
+     end if
 
 ! The "l_precip_clear_only" option is used when the nonvar cloud analysis follows "direct" EnVar or EnKF assimilation of
 ! radar-reflectivity observations.  In this case, we typically trust the hydrometeor analysis from the reflectivity data
@@ -1048,7 +1030,7 @@ program cloudanalysis
                     nrain_3d(i,j,k) = zero
                     snow_3d(i,j,k) = zero
                     graupel_3d(i,j,k) = zero
-                 else 
+                 else
                     rain_3d(i,j,k) = ges_qr(i,j,k)
                     nrain_3d(i,j,k)= ges_qnr(i,j,k)
                     snow_3d(i,j,k) = ges_qs(i,j,k)
@@ -1082,7 +1064,7 @@ program cloudanalysis
               tsfc=t_bk(i,j,1)*(p_bk(i,j,1)/h1000)**rd_over_cp - 273.15_r_kind
               if(tsfc  < r_cleanSnow_WarmTs_threshold) then    ! add snow on cold sfc   
                  do k=1,nsig
-                    snowtemp=snow_3d(i,j,k) 
+                    snowtemp=snow_3d(i,j,k)
                     rain_3d(i,j,k) = ges_qr(i,j,k)
                     nrain_3d(i,j,k)= ges_qnr(i,j,k)
                     snow_3d(i,j,k) = ges_qs(i,j,k)
@@ -1146,7 +1128,7 @@ program cloudanalysis
                        if(ref_mos_3d(i,j,k) >=15.0_r_single .and. &
                           ref_mos_3d(i,j,k) <=28.0_r_single ) then
                           rain_3d(i,j,k) = max(min(rain_1d_save(k),qrlimit_lightpcp),rain_3d(i,j,k))
-                          snow_3d(i,j,k) = max(min(snow_1d_save(k),qrlimit_lightpcp),snow_3d(i,j,k)) 
+                          snow_3d(i,j,k) = max(min(snow_1d_save(k),qrlimit_lightpcp),snow_3d(i,j,k))
                           nrain_3d(i,j,k)= max(nrain_1d_save(k),nrain_3d(i,j,k))
                        endif
                     enddo  ! light pcp
@@ -1161,7 +1143,7 @@ program cloudanalysis
                  if((iclean_hydro_withRef==1)) then
                     if( iclean_hydro_withRef_allcol==1 .and. &
                        (refmax <= zero .and. refmax >= -100_r_kind) .and. &
-                       (sat_ctp(i,j) >=1010.0_r_kind .and. sat_ctp(i,j) <1050._r_kind)) then     
+                       (sat_ctp(i,j) >=1010.0_r_kind .and. sat_ctp(i,j) <1050._r_kind)) then
                        rain_3d(i,j,k) = zero
                        nrain_3d(i,j,k)= zero
                        snow_3d(i,j,k) = zero
@@ -1225,7 +1207,7 @@ program cloudanalysis
         end do
      end do
   end do
- 
+
 !!
 !! move clean process up.   Feb. 6 , 2013
 !!  clean the hydrmeteors on grid that:
@@ -1273,8 +1255,8 @@ program cloudanalysis
 !  add fog  (12/08/2015)
 !
   if (.not. l_fog_off) then
-     do j=2,lat2-1
-        do i=2,lon2-1
+     do j=1,lat2
+        do i=1,lon2
            if( vis2qc(i,j) > zero ) then
               do k=1,2
                  Temp = t_bk(i,j,k)*(p_bk(i,j,k)/h1000)**rd_over_cp
@@ -1301,32 +1283,32 @@ program cloudanalysis
 ! (Oct. 14, 2010)
 !
 ! T/Q update
-  do k=1,nsig
-     do j=1,lat2
+! 
+! SSM: Previous code versions converted t_bk to temperature and q_bk to specific
+! humidity. For MPAS, keep t_bk as potential temperature and q_bk as mixing ratio
+  ! =0 no T/Q adjustment
+  if(i_T_Q_adjust==0) then
+    write(6,*) 'gsdcloudanalysis: no T/Q adjustment',mype
+    t_bk=ges_tv
+    q_bk=ges_q
+  ! =1 default T/Q adjustment
+  elseif(i_T_Q_adjust==1) then
+    write(6,*) 'gsdcloudanalysis: default T/Q adjustment',mype
+  ! =2 T/Q adjustment only for case of clearing
+  elseif(i_T_Q_adjust==2) then
+    write(6,*) 'gsdcloudanalysis: T/Q adjustment for cloud clearing',mype
+    do k=1,nsig
+      do j=1,lat2
         do i=1,lon2
-           ! =0 no T/Q adjustment
-           if(i_T_Q_adjust==0) then
-              write(6,*) 'gsdcloudanalysis: no T/Q adjustment',mype
-              t_bk=ges_tv
-              q_bk=ges_q
-           ! =1 default T/Q adjustment
-           elseif(i_T_Q_adjust==1) then
-              !t_bk(i,j,k)=t_bk(i,j,k)*(p_bk(i,j,k)/h1000)**rd_over_cp * (one+fv*q_bk(i,j,k))
-              t_bk(i,j,k)=t_bk(i,j,k)*(p_bk(i,j,k)/h1000)**rd_over_cp
-              ! Here q is mixing ratio kg/kg, need to convert to specific humidity
-              q_bk(i,j,k)=q_bk(i,j,k)/(1+q_bk(i,j,k)) 
-           ! =2 T/Q adjustment only for case of clearing
-           elseif(i_T_Q_adjust==2) then
-              !t_bk(i,j,k)=max(ges_tv(i,j,k),t_bk(i,j,k)*(p_bk(i,j,k)/h1000)**rd_over_cp * (one+fv*q_bk(i,j,k)))
-              t_bk(i,j,k)=max(ges_tv(i,j,k),t_bk(i,j,k)*(p_bk(i,j,k)/h1000)**rd_over_cp)
-              ! Here q is mixing ratio kg/kg, need to convert to specific humidity
-              q_bk(i,j,k)=min(ges_q(i,j,k),q_bk(i,j,k)/(1+q_bk(i,j,k)))
-           else
-              write(6,*) 'gsdcloudanalysis: WARNING no T/Q adjustment, check i_T_Q_adjust value',mype
-           endif
-        enddo 
-     enddo
-  enddo
+          t_bk(i,j,k)=max(ges_tv(i,j,k),t_bk(i,j,k))
+          q_bk(i,j,k)=min(ges_q(i,j,k),q_bk(i,j,k))
+        enddo
+      enddo
+    enddo
+  else
+    write(6,*) 'gsdcloudanalysis: WARNING no T/Q adjustment, check i_T_Q_adjust value',mype
+  endif
+
   if(i_T_Q_adjust==2 .or. i_T_Q_adjust==0) then
      deallocate(ges_tv)
      deallocate(ges_q)
@@ -1335,14 +1317,14 @@ program cloudanalysis
   do k=1,nsig
      do j=1,lat2
         do i=1,lon2
-           if(l_cld_uncertainty) then
-              ! hydrometeor uncertainties
-              unc_ql(i,j,k) = 0.1_r_kind * (cldwater_3d(i,j,k) - ges_ql(i,j,k))
-              unc_qi(i,j,k) = 0.1_r_kind * (cldice_3d(i,j,k) - ges_qi(i,j,k))
-              unc_qr(i,j,k) = 0.1_r_kind * (rain_3d(i,j,k) - ges_qr(i,j,k))
-              unc_qs(i,j,k) = 0.1_r_kind * (snow_3d(i,j,k) - ges_qs(i,j,k))
-              unc_qg(i,j,k) = 0.1_r_kind * (graupel_3d(i,j,k) - ges_qg(i,j,k))
-           endif
+           !if(l_cld_uncertainty) then
+           !   ! hydrometeor uncertainties
+           !   unc_ql(i,j,k) = 0.1_r_kind * (cldwater_3d(i,j,k) - ges_ql(i,j,k))
+           !   unc_qi(i,j,k) = 0.1_r_kind * (cldice_3d(i,j,k) - ges_qi(i,j,k))
+           !   unc_qr(i,j,k) = 0.1_r_kind * (rain_3d(i,j,k) - ges_qr(i,j,k))
+           !   unc_qs(i,j,k) = 0.1_r_kind * (snow_3d(i,j,k) - ges_qs(i,j,k))
+           !   unc_qg(i,j,k) = 0.1_r_kind * (graupel_3d(i,j,k) - ges_qg(i,j,k))
+           !endif
            ! hydrometeor update
            ges_qr(i,j,k)=rain_3d(i,j,k)
            ges_qs(i,j,k)=snow_3d(i,j,k)
@@ -1355,7 +1337,7 @@ program cloudanalysis
              ges_qni(i,j,k)=nice_3d(i,j,k)
              ges_qnc(i,j,k)=nwater_3d(i,j,k)
            endif
-        enddo 
+        enddo
      enddo
   enddo
 !
@@ -1400,16 +1382,18 @@ endif
 !
 !  update background for analysis results
 !
-  call update_fv3sar(mype)
+  call update_mpas(mype)
   if(l_cld_uncertainty) then
-    write(6,*) 'gsdcloudanalysis: updating hydrometeor uncertainty file'
-    ges_ql = unc_ql
-    ges_qi = unc_qi
-    ges_qr = unc_qr
-    ges_qs = unc_qs
-    ges_qg = unc_qg
-    call update_fv3sar_unc(mype)
-    write(6,*) 'gsdcloudanalysis: hydrometeor uncertainty update complete'
+    write(6,*) 'ERROR: Cannot update hydrometeor uncertainty with MPAS'
+    stop
+!    write(6,*) 'gsdcloudanalysis: updating hydrometeor uncertainty file'
+!    ges_ql = unc_ql
+!    ges_qi = unc_qi
+!    ges_qr = unc_qr
+!    ges_qs = unc_qs
+!    ges_qg = unc_qg
+!    call update_fv3sar_unc(mype)
+!    write(6,*) 'gsdcloudanalysis: hydrometeor uncertainty update complete'
   end if
 
 !!
@@ -1425,8 +1409,8 @@ endif
   deallocate(vis2qc)
 
   if(istat_surface ==  1 ) then
-     deallocate(oi,oj,ocld,owx,oelvtn,odist,cstation,oistation,ojstation,wimaxstation)
-     deallocate(watericemax,kwatericemax) 
+     deallocate(oi,oj,ocld,owx,oelvtn,odist,cstation,wimaxstation)
+     deallocate(watericemax,kwatericemax)
   endif
   if(istat_nasalarc == 1 ) then
      deallocate(nasalarc_cld)
@@ -1436,7 +1420,7 @@ endif
   deallocate(ref_mos_3d,ref_mos_3d_tten,lightning)
 
   endif
-  call release_mem_fv3sar
+  call release_mem_mpas
 !
   write(6,*) "CLDcount", r_cloudfrac_threshold,clean_count,build_count,part_count,miss_count
   write(6,*) '========================================'

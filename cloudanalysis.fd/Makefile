@@ -29,7 +29,7 @@ SRC=NonVarCldLib/map_ctp.f90 \
     rapidrefresh_cldsurf_mod.f90 \
     namelist_mod.f90 \
     get_mpas_bk_mod.f90 \
-    cloudanalysis_tmp_driver.f90
+    cloudanalysis_mpas_driver.f90
 OBJ=${SRC:.f90=.o}
 
 # Program dependencies
