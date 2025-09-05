@@ -25,6 +25,13 @@ mosaic.fd/namelist.mosaic_netcdf
 mosaic.fd/filelist_mrms
 lightning.fd/namelist.lightning
 cloudanalysis.fd/gsiparm.anl
+run/namelist.nasalarc
+run/namelist.metarcld
+run/namelist.mosaic
+run/namelist.mosaic_netcdf
+run/filelist_mrms
+run/namelist.lightning
+run/gsiparm.anl
 
 # Other
 *.swp

@@ -32,6 +32,13 @@ The remaining directories are as follows:
 1. Edit `build_all.sh` to include the correct machine
 2. Run `bash build_all.sh`
 
+## Running
+
+0. Follow the above steps to build all 5 programs
+1. `cd run`
+2. Edit the top of `run_mpas_nonvar_cld_analysis.sh` to have the proper machine and slurm specs (e.g., allocation)
+3. `sbatch run_mpas_nonvar_cld_analysis.sh`
+
 ## Comparison to FV3
 
 The chief difference between MPAS and FV3 that is relevant for the nonvariational cloud analysis is that FV3 uses a 3D dimensional grid (x, y, z) for 3D fields whereas MPAS uses a 2D dimensional grid (cell, z). In an effort to minimize the number of files that need to be changed when adapting the nonvariational cloud analysis for MPAS, many of the arrays in `cloudanalysis.fd` are still 3D with dimensions `(lon2, lat2, nsig)`. For the MPAS implementation here, `lon2 = 1, lat2 = nCell, nsig = nz`. Thus, these 3D arrays are effectively 2D.
