@@ -4,7 +4,8 @@ Plot Processed METAR Cloud Observations Dumped to a Text File
 Passed Arguments
 ----------------
 sys.argv[1] : Input text file name
-sys.argv[2] : Domain name
+sys.argv[2] : MPAS invariant file with 'zgrid' and 'ter' fields
+sys.argv[3] : Domain name
 
 shawn.s.murdzek@noaa.gov
 """
@@ -21,6 +22,7 @@ import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import datetime as dt
+import xarray as xr
 
 
 #---------------------------------------------------------------------------------------------------
@@ -41,18 +43,25 @@ okta_cmap = mpl.colors.ListedColormap(okta_colors)
 # Input text file
 infile = sys.argv[1]
 
+# MPAS invariant file
+mpas_fname = sys.argv[2]
+
 # Plotting parameters
 param = {'ceil': {'cmap': 'plasma',
                   'vmin': 0,
-                  'vmax': 7000,
+                  'vmax': 2500,
                   'units': 'm'},
          'max_okta': {'cmap': okta_cmap,
                       'vmin': -1.5,
                       'vmax': 8.5,
-                      'units': '-1 = missing'}}
+                      'units': '-1 = missing'},
+         'okta': {'cmap': okta_cmap,
+                  'vmin': -1.5,
+                  'vmax': 8.5,
+                  'units': '-1 = missing'}}
 
 # Plotting domain
-domain = sys.argv[2]
+domain = sys.argv[3]
 minlat = 18
 minlon = -135
 maxlat = 55
@@ -81,6 +90,74 @@ elif domain != 'full':
 
 
 #---------------------------------------------------------------------------------------------------
+# Helper Function to Create Plots
+#---------------------------------------------------------------------------------------------------
+
+def create_plot(lat, lon, c, name, param, bounds, domain, markersize):
+    """
+    Create a scatterplot of ceilometer obs mapped onto the MPAS mesh
+
+    Parameters
+    ----------
+    lat : array
+        Latitude coordinates of interpolated ceilometer obs (deg N)
+    lon : array
+        Longitude coordinates of interpolated ceilometer obs (deg E)
+    c : array
+        Field used to color the scatterplot points
+    name : string
+        Name of field being plotting
+    param : dictionary
+        Additional plotting parameters. One of the keys should match 'name'
+    bounds : list
+        [minlon, maxlon, minlat, maxlat]
+    domain : string
+        Domain name
+    markersize : float
+        Scatterplot marker size
+
+    Returns
+    -------
+    fig : matplotlib.pyplot.figure
+        Figure with scatterplot
+
+    """
+
+    # Create state borders
+    borders = cfeature.NaturalEarthFeature(category='cultural',
+                                           scale='50m',
+                                           facecolor='none',
+                                           name='admin_1_states_provinces')
+
+    # Create figure and axes
+    fig = plt.figure(figsize=(10, 8))
+    ax = fig.add_subplot(1, 1, 1, projection=ccrs.LambertConformal())
+
+    cax = ax.scatter(lon, lat, c=c, s=markersize,
+                     transform=ccrs.PlateCarree(),
+                     cmap=param[name]['cmap'], vmin=param[name]['vmin'], vmax=param[name]['vmax'])
+
+    # Add colorbar
+    cbar = plt.colorbar(cax, ax=ax, orientation='horizontal')
+    if 'units' in param[name]:
+        cbar_label = f"{name} ({param[name]['units']})"
+    else:
+        cbar_label = name
+    cbar.set_label(cbar_label, size=14)
+
+    # Set tick locations for oktas
+    if name in ['max_okta', 'okta']:
+        cbar.ax.set_xticks(np.arange(-1, 9))
+
+    ax.set_extent(bounds)
+    ax.coastlines('50m', linewidth=1, edgecolor='k')
+    ax.add_feature(borders, linewidth=0.75, edgecolor='gray')
+    ax.set_title('Processed METAR Cloud Obs', size=18)
+
+    return fig
+
+
+#---------------------------------------------------------------------------------------------------
 # Program
 #---------------------------------------------------------------------------------------------------
 
@@ -89,11 +166,16 @@ print('Starting METAR Cloud Plotting Program')
 print(f"time = {start.strftime('%Y%m%d %H:%M:%S')}")
 print()
 
-# Open file
+# Open METAR text file
 df = pd.read_csv(infile, sep="\s+")
 df.replace(-99999., value=np.nan, inplace=True)
 print(f"Total entries in input file = {len(df)}")
 print()
+
+# Open MPAS invariant file and determin vertical grid
+mpas_ds = xr.open_dataset(mpas_fname)
+mpas_z = np.mean(mpas_ds['zgrid'].values - mpas_ds['ter'].values[:, np.newaxis], axis=0)
+nbin = len(mpas_z) - 1
 
 # Decode CLAM field into oktas
 # -1 indicates missing obs
@@ -123,40 +205,31 @@ for i in range(1, 4):
 ceil[np.isclose(ceil, -1)] = np.nan
 df['ceil'] = ceil
 
-# Create state borders
-borders = cfeature.NaturalEarthFeature(category='cultural',
-                                       scale='50m',
-                                       facecolor='none',
-                                       name='admin_1_states_provinces')
-
 # Plot data
-for c in param.keys():
-    print(f"Plotting {c}")
-    fig = plt.figure(figsize=(10, 8))
-    ax = fig.add_subplot(1, 1, 1, projection=ccrs.LambertConformal())
+for name in param.keys():
 
-    cax = ax.scatter(df['MPAS_lon'], df['MPAS_lat'], c=df[c], s=markersize,
-                     transform=ccrs.PlateCarree(),
-                     cmap=param[c]['cmap'], vmin=param[c]['vmin'], vmax=param[c]['vmax'])
+    if name == 'okta':
+        for j in range(nbin):
+            cond = np.zeros(len(df))
+            for k in range(1, 4):
+                cond = np.logical_or(cond, np.logical_and(df[f'base{k}'] >= mpas_z[j], 
+                                                          df[f'base{k}'] < mpas_z[j+1]))
+            subset = df.loc[cond]
+            max_okta = np.amax(subset.loc[:, [f"okta{i}" for i in range(1, 4)]].values, axis=1)
+            if len(subset) > 0:
+                print(f"Plotting {name} {j}")
+                fig = create_plot(subset['MPAS_lat'], subset['MPAS_lon'], max_okta, name, param, 
+                                  [minlon, maxlon, minlat, maxlat], domain, markersize)
+                plt.suptitle(f'{mpas_z[j]:.1f} <= z < {mpas_z[j+1]:.1f} m', size=18)
+                plt.savefig(f"{name}_{j}_{domain}_metarcld.png")
+                plt.close()
 
-    cbar = plt.colorbar(cax, ax=ax, orientation='horizontal')
-    if 'units' in param[c]:
-        cbar_label = f"{c} ({param[c]['units']})"
     else:
-        cbar_label = c
-    cbar.set_label(cbar_label, size=14)
-
-    # Set tick locations for max_oktas
-    if c == 'max_okta':
-        cbar.ax.set_xticks(np.arange(-1, 9))
-
-    ax.set_extent([minlon, maxlon, minlat, maxlat])
-    ax.coastlines('50m', linewidth=1, edgecolor='k')
-    ax.add_feature(borders, linewidth=0.75, edgecolor='gray')
-    ax.set_title('Processed METAR Cloud Obs', size=18)
-
-    plt.savefig(f"{c}_{domain}_metarcld.png")
-    plt.close()
+        print(f"Plotting {name}")
+        fig = create_plot(df['MPAS_lat'], df['MPAS_lon'], df[name], name, param, 
+                          [minlon, maxlon, minlat, maxlat], domain, markersize)
+        plt.savefig(f"{name}_{domain}_metarcld.png")
+        plt.close()
 
 print()
 print('Done!')
