@@ -43,7 +43,8 @@ subroutine read_NASALaRC_cloud(satfile,atime,nxp,nyp,ptop, teff, phase, lwp_iwp,
 !
   CHARACTER*24 :: cbase_time
   INTEGER(i_kind) ::  base_time
-  INTEGER(i_kind) ::  ibase_year,ibase_month,ibase_day,ibase_hour,ihour
+  INTEGER(i_kind) ::  ibase_year,ibase_month,ibase_day,ibase_hour
+!  INTEGER(i_kind) ::  ihour
   INTEGER(i_kind) ::  icycle_year,icycle_month,icycle_day,icycle_hour
   REAL*8      time_offset
   REAL*4      lat                            (  nxp,  nyp)
@@ -56,10 +57,7 @@ subroutine read_NASALaRC_cloud(satfile,atime,nxp,nyp,ptop, teff, phase, lwp_iwp,
 !
 !  ** misc
       
-  integer i,j,k
-  Integer nf_status,nf_fid,nx,ny,nf_vid
-
-  integer :: NCID
+  Integer nf_status,nf_fid,nf_vid
 
   integer :: status
   character*10  atime
