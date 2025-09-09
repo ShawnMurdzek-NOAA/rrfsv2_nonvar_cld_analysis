@@ -37,7 +37,7 @@ All namelist options are in a single section titles `&setup`
 | `bufrfile` | NASALaRCCloudInGSI\_bufr.bufr | Name of output BUFR file. |
 | `ioption` | 2 | Interpolation option. 1 = nearest neighbor, 2 = median. Only ioption = 2 has been tested. |
 | `npts_rad` | 1 | Half length of the square box used to interpolate NASA LaRC observations (see "code overview" section). |
-| `userDX` | 3000. | Model grid mesh spacing in meters |
+| `userDX` | 3000. | Model mesh spacing in meters |
 | `debug` | 0 | Option to print additional output for debugging. Set to 0 to not print any additional output |
 
 #### Vector Options
@@ -69,9 +69,9 @@ This is the main driver for this program. The steps followed by the driver are a
 1. Define the map projection used as an intermediary between the NASA LaRC observations and MPAS mesh.
 2. Read in the MPAS mesh information and NASA LaRC observations
 3. Interpolate the NASA LaRC observations to the MPAS mesh using the map projection
-  1. Define a box around each point in the map projection. The box size is defined by either `npts_rad` for a constant-sized box or `boxlat0`, `boxhalfx`, and `boxhalfy` for a variable-sized box.
-  2. Determine all the observations that fall into each box. The observations in each box are saved in arrays that contain "xx" in the name.
-  3. Match each MPAS cell with a map projection grid point and corresponding box. The NASA LaRC observations interpolated to that MPAS cell is a reduction of all observations within the corresponding box, with the reduction determined by `ioption`.
+    1. Define a box around each point in the map projection. The box size is defined by either `npts_rad` for a constant-sized box or `boxlat0`, `boxhalfx`, and `boxhalfy` for a variable-sized box.
+    2. Determine all the observations that fall into each box. The observations in each box are saved in arrays that contain "xx" in the name.
+    3. Match each MPAS cell with a map projection grid point and corresponding box. The NASA LaRC observations interpolated to that MPAS cell is a reduction of all observations within the corresponding box, with the reduction determined by `ioption`.
 4. Write out results to a binary file and BUFR file.
 
 ### process\_NASALaRC\_cloud\_FV3.f90
