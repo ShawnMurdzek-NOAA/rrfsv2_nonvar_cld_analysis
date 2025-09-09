@@ -1,4 +1,8 @@
-subroutine reorg_metar_cloud_regular(cdata,nreal,ndata,nlat,nlon,nCell,lat_m,lon_m,&
+module reorg_metar_cloud
+
+contains
+
+subroutine reorg_metar_cloud_regular(cdata,nreal,ndata,nlat,nlon,nCell,&
                                      x_mp_m,y_mp_m,cdata_all,maxobs,ngrid)
 !$$$  subprogram documentation block
 !                .      .    .                                       .
@@ -43,7 +47,7 @@ subroutine reorg_metar_cloud_regular(cdata,nreal,ndata,nlat,nlon,nCell,lat_m,lon
 
   use kinds, only: r_kind,i_kind,r_double
 
-  use cld_parm_array_mod, only: region_dy,region_dx
+  use cld_parm_array_mod, only: region_dx
   use cld_parm_array_mod, only: metar_impact_radius
   use cld_parm_array_mod, only: l_metar_impact_radius_change, &
                             metar_impact_radius_max,metar_impact_radius_min,&
@@ -60,7 +64,7 @@ subroutine reorg_metar_cloud_regular(cdata,nreal,ndata,nlat,nlon,nCell,lat_m,lon
   integer(i_kind)                       ,intent(in) :: ndata
   integer(i_kind)                       ,intent(in) :: maxobs
   integer(i_kind)                       ,intent(in) :: nlat,nlon,nCell
-  real,dimension(nCell)                 ,intent(in) :: lat_m,lon_m,x_mp_m,y_mp_m
+  real,dimension(nCell)                 ,intent(in) :: x_mp_m,y_mp_m
   real(r_kind),dimension(nreal,ndata)   ,intent(inout) :: cdata
   real(r_kind),dimension(nreal,maxobs)  ,intent(out):: cdata_all
   integer(i_kind)                       ,intent(out):: ngrid
@@ -297,6 +301,8 @@ subroutine reorg_metar_cloud_regular(cdata,nreal,ndata,nlat,nlon,nCell,lat_m,lon
              do while (icell_prev /= null_p)
 
 !sb - Find closest cloud station to grid point
+! Checking that dist < float(isprd2) ensures that the area of influence around a ceilometer is a 
+! circle and not a square
                min_dist = 1.e10_r_kind
                do ic= 1,nsta_cld
                   ista = sta_cld(ic)
@@ -392,3 +398,5 @@ subroutine reorg_metar_cloud_regular(cdata,nreal,ndata,nlat,nlon,nCell,lat_m,lon
    deallocate(next_cell)
 
 end subroutine reorg_metar_cloud_regular
+
+end module reorg_metar_cloud

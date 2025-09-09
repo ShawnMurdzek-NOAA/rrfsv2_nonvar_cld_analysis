@@ -36,7 +36,7 @@ All namelist options are in a single section titles `&setup`
 | `analysis_time` | 2018051718 | Analysis valid time in YYYYMMDDHH format. |
 | `bufrfile` | NASALaRCCloudInGSI\_bufr.bufr | Name of output BUFR file. |
 | `ioption` | 2 | Interpolation option. 1 = nearest neighbor, 2 = median. Only ioption = 2 has been tested. |
-| `npts_rad` | 1 | Half length of the square box used to interpolate NASA LaRC observations (see "code overview" section). |
+| `npts_rad` | 1 | Half length of the square box used to interpolate NASA LaRC observations (see "code overview" section). Units are grid boxes of the map projection. |
 | `userDX` | 3000. | Model mesh spacing in meters |
 | `debug` | 0 | Option to print additional output for debugging. Set to 0 to not print any additional output |
 
@@ -47,8 +47,8 @@ The following parameters are vectors with length boxMAX = 10. By default, all va
 | Parameter | Default | Description |
 | --------- | ------- | ----------- |
 | `boxlat0` | 999. | Edges of the latitude bins (in deg N) used for the variable interpolation box. Set to a large number (e.g., 999.) to not use a variable box. |
-| `boxhalfx` | -1 | Number of points in the x direction for the variable interpolation box for each latitude bin defined by boxlat0. |
-| `boxhalfy` | -1 | Number of points in the y direction for the variable interpolation box for each latitude bin defined by boxlat0. |
+| `boxhalfx` | -1 | Number of map projection grid points in the x direction for the variable interpolation box for each latitude bin defined by boxlat0. |
+| `boxhalfy` | -1 | Number of map projection grid points in the y direction for the variable interpolation box for each latitude bin defined by boxlat0. |
 
 ## Code Overview
 

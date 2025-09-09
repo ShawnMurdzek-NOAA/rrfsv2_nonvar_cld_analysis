@@ -42,6 +42,7 @@ cat << EOF > namelist.metarcld
   prepbufrfile='prepbufr'
   twindin=0.5,
   metar_impact_radius=17,
+  region_dx=3500.,
   debug=1,
  /
 EOF

@@ -1,3 +1,7 @@
+module read_prepbufr_metar
+
+contains
+
 subroutine read_prepbufr_metarcld(infile,analysis_time,analysis_minute,&
                                   twindin,nCell,lat_m,lon_m)
 !$$$  subprogram documentation block
@@ -23,12 +27,16 @@ subroutine read_prepbufr_metarcld(infile,analysis_time,analysis_minute,&
   use kinds, only: r_single,r_kind,i_kind,r_double
   use cld_parm_array_mod, only : obstype, sis, nchanl,nreal,ilat,ilon,ndata
   use cld_parm_array_mod, only : cdata_regular
-
-! Modules from WPS
   use map_utils
   use misc_definitions_module
+  use reorg_metar_cloud, only: reorg_metar_cloud_regular
 
   implicit none
+
+! Explicitly declare external functions and subroutines
+  external :: openbf,datelen,ufbint,closbf
+  integer, external :: ireadmg,ireadsb
+  external :: w3fs21
 
 ! Declare passed variables
   character(len=*)                      ,intent(in   ) :: infile
@@ -45,27 +53,22 @@ subroutine read_prepbufr_metarcld(infile,analysis_time,analysis_minute,&
 ! Declare local variables
 
   character(40) hdstr,qcstr
-  character(40) metarcldstr,goescldstr,metarvisstr,metarwthstr
+  character(40) metarcldstr,metarvisstr,metarwthstr
   character(80) obstr
   character(10) date
   character(8) subset
   character(8) c_station_id
-  character(8) stnid
 
-  integer(i_kind) ireadmg,ireadsb,iiout
-  integer(i_kind) lunin,i,maxobs,j,nmsgmax,mxtb
+  integer(i_kind) lunin,i,maxobs,j
   integer(i_kind) metarcldlevs,metarwthlevs
   integer(i_kind) nmsg                ! message index
-  integer(i_kind) idx                 ! order index of aircraft temperature bias
-  integer(i_kind) iyyyymm
   integer(i_kind),dimension(5):: idate5
   real(r_kind),allocatable,dimension(:,:):: cdata_all,cdata_out
 
   integer(i_kind) :: nread,ntb
 
   real(r_kind) rstation_id
-  real(r_double) qcmark_huge
-  real(r_double),dimension(8):: hdr,hdrtsb
+  real(r_double),dimension(8):: hdr
   real(r_double),dimension(13,255):: obsdat
   real(r_double),dimension(8,255):: qcmark 
   real(r_double),dimension(2,10):: metarcld
@@ -373,7 +376,7 @@ subroutine read_prepbufr_metarcld(infile,analysis_time,analysis_minute,&
   if(metarcldobs .and. ndata > 0) then
      maxobs=2000000
      allocate(cdata_all(nreal,maxobs))
-     call reorg_metar_cloud_regular(cdata_out,nreal,ndata,nlat,nlon,nCell,lat_m,lon_m,&
+     call reorg_metar_cloud_regular(cdata_out,nreal,ndata,nlat,nlon,nCell,&
                                     x_mp_m,y_mp_m,cdata_all,maxobs,iout)
      ndata=iout
      deallocate(cdata_out)
@@ -395,3 +398,4 @@ subroutine read_prepbufr_metarcld(infile,analysis_time,analysis_minute,&
 
 end subroutine read_prepbufr_metarcld
 
+end module read_prepbufr_metar

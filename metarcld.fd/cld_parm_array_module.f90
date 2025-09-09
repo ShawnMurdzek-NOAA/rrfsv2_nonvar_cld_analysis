@@ -47,15 +47,14 @@ contains
 
 subroutine init_cld_parm
 
-
   metar_impact_radius = 16.0_r_kind                 ! in grid
   l_metar_impact_radius_change = .false.            ! .true. =radius change vertically 
   metar_impact_radius_max        = 50000.0_r_kind   ! in meter
   metar_impact_radius_min        = 20000.0_r_kind   ! in meter
   metar_impact_radius_max_height = 3000.0_r_kind    ! in meter
   metar_impact_radius_min_height = 200.0_r_kind     ! in meter
-  region_dy=3500.0
-  region_dx=3500.0
+  region_dx=3000.
+  region_dy=3000.
 
 end subroutine init_cld_parm
 

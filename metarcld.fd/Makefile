@@ -2,11 +2,12 @@
 # Compiler settings
 # diag-disable=10448 flag is needed to disable warning about how ifort is deprecated
 FFLAGS=-diag-disable=10448 -traceback
+#FFLAGS=-diag-disable=10448 -traceback -g -warn all -check all
 
 # Components of program
 SRC=cld_parm_array_module.f90 \
-    reorg_metar_cloud_regular.f90 \
-    read_prepbufr_metarcld.f90 \
+    reorg_metar_cloud_mod.f90 \
+    read_prepbufr_metar_mod.f90 \
     process_metar_cloud.f90
 OBJ=${SRC:.f90=.o}
 
