@@ -332,7 +332,7 @@ subroutine write_bufr_NASALaRC(bufrfile,idate,nlon,nlat,dx,index,w_pcld,w_tcld,w
     REAL(r_single), intent(in) ::   w_tcld(nlon,nlat)
     REAL(r_single), intent(in) ::   w_frac(nlon,nlat)
     REAL(r_single), intent(in) ::   w_lwp (nlon,nlat)
-    REAL,           intent(in) ::   dx
+    REAL(r_kind),   intent(in) ::   dx
     INTEGER(i_kind),   intent(in) ::   nlev_cld(nlon,nlat)
 
     real(r_kind) :: hdr(5),obs(1,5)

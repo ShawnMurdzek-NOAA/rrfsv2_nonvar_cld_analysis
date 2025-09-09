@@ -1,12 +1,11 @@
 
 # Compiler settings
 # diag-disable=10448 flag is needed to disable warning about how ifort is deprecated
-FFLAGS=-diag-disable=10448 -traceback
-#FFLAGS=-diag-disable=10448 -traceback -g -warn all -check all
+#FFLAGS=-diag-disable=10448 -traceback
+FFLAGS=-diag-disable=10448 -traceback -g -warn all -check all
 
 # Components of program
-SRC=read_NASALaRC_cloud.f90 \
-    larccld_utils_mod.f90 \
+SRC=larccld_utils_mod.f90 \
     larccld_bufr_io_mod.f90 \
     process_NASALaRC_cloud.f90
 OBJ=${SRC:.f90=.o}

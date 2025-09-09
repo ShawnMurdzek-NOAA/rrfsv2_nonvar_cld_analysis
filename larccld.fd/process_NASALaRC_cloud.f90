@@ -32,6 +32,7 @@ program  process_NASALaRC_cloud
   use misc_definitions_module
   use larccld_utils, only: sortmed,compute_haversine_dist
   use larccld_bufr_io, only: read_NASALaRC_cloud_bufr,read_NASALaRC_cloud_bufr_survey
+  use larccld_bufr_io, only: write_bufr_NASALaRC
 
   implicit none
 !
@@ -100,10 +101,9 @@ program  process_NASALaRC_cloud
   integer(i_kind)    :: npts_rad, nptsx, nptsy
   integer(i_kind)    :: boxhalfx(boxMAX), boxhalfy(boxMAX)
   real (r_kind)      :: boxlat0(boxMAX)
-  character(len=20)  :: grid_type
   real (r_kind)      :: userDX
   integer            :: debug
-  namelist/setup/ grid_type,analysis_time, ioption, npts_rad,bufrfile, &
+  namelist/setup/ analysis_time, ioption, npts_rad,bufrfile, &
                   boxhalfx, boxhalfy, boxlat0,userDX,debug
 !
 !
@@ -145,7 +145,6 @@ program  process_NASALaRC_cloud
       ! * ioption = 1 is nearest neighrhood
       ! * ioption = 2 is median of cloudy fov
      ioption = 2
-     grid_type="none"
      userDX=3000.0
      debug=0
  
@@ -165,7 +164,7 @@ program  process_NASALaRC_cloud
      endif
 
 !
-! define map projection (Lambert Conformal from HRRR
+! define map projection (Lambert Conformal, slightly larger than the HRRR domain)
 !
 
      lat1 = 38.5
@@ -462,6 +461,10 @@ program  process_NASALaRC_cloud
         write(15)  nlev_cld
      close(15)
 !
+!  write out results
+!
+     call write_bufr_NASALaRC(bufrfile,analysis_time,1,nCell,userDX,index,w_pcld,w_tcld,w_frac,w_lwp,nlev_cld)
+!
 ! DEBUGGING: Write out interpolated NASA LaRC data to text file
 !
      if (debug > 0) then
@@ -473,6 +476,14 @@ program  process_NASALaRC_cloud
        close(13)
      endif
 
+!
+     deallocate(w_pcld)
+     deallocate(w_tcld)
+     deallocate(w_frac)
+     deallocate(w_lwp)
+     deallocate(nlev_cld)
+     deallocate(index)
+!
      write(6,*) "=== RAPHRRR PREPROCCESS SUCCESS ==="
   endif ! if mype==0 
 
