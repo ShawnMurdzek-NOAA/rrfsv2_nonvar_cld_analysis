@@ -377,7 +377,7 @@ subroutine read_prepbufr_metarcld(infile,analysis_time,analysis_minute,&
      maxobs=2000000
      allocate(cdata_all(nreal,maxobs))
      call reorg_metar_cloud_regular(cdata_out,nreal,ndata,nlat,nlon,nCell,&
-                                    x_mp_m,y_mp_m,cdata_all,maxobs,iout)
+                                    x_mp_m,y_mp_m,dx,cdata_all,maxobs,iout)
      ndata=iout
      deallocate(cdata_out)
      allocate(cdata_regular(nreal,ndata))

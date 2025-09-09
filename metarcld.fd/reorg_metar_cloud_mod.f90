@@ -3,7 +3,7 @@ module reorg_metar_cloud
 contains
 
 subroutine reorg_metar_cloud_regular(cdata,nreal,ndata,nlat,nlon,nCell,&
-                                     x_mp_m,y_mp_m,cdata_all,maxobs,ngrid)
+                                     x_mp_m,y_mp_m,proj_dx,cdata_all,maxobs,ngrid)
 !$$$  subprogram documentation block
 !                .      .    .                                       .
 ! subprogram:  reorg_metar_cloud     define a closest METAR cloud observation for each grid point
@@ -25,6 +25,7 @@ subroutine reorg_metar_cloud_regular(cdata,nreal,ndata,nlat,nlon,nCell,&
 !     ndata     - second dimension of cdata
 !     maxobs    - maximum number of cdata_all
 !     ndata     - number of type "obstype" observations retained for further processing
+!     proj_dx   - Grid spacing of map projection (m)
 !
 !  output argument list:
 !     cdata_all - reorganized METAR observation
@@ -47,7 +48,6 @@ subroutine reorg_metar_cloud_regular(cdata,nreal,ndata,nlat,nlon,nCell,&
 
   use kinds, only: r_kind,i_kind,r_double
 
-  use cld_parm_array_mod, only: region_dx
   use cld_parm_array_mod, only: metar_impact_radius
   use cld_parm_array_mod, only: l_metar_impact_radius_change, &
                             metar_impact_radius_max,metar_impact_radius_min,&
@@ -65,6 +65,7 @@ subroutine reorg_metar_cloud_regular(cdata,nreal,ndata,nlat,nlon,nCell,&
   integer(i_kind)                       ,intent(in) :: maxobs
   integer(i_kind)                       ,intent(in) :: nlat,nlon,nCell
   real,dimension(nCell)                 ,intent(in) :: x_mp_m,y_mp_m
+  real                                  ,intent(in) :: proj_dx
   real(r_kind),dimension(nreal,ndata)   ,intent(inout) :: cdata
   real(r_kind),dimension(nreal,maxobs)  ,intent(out):: cdata_all
   integer(i_kind)                       ,intent(out):: ngrid
@@ -108,7 +109,7 @@ subroutine reorg_metar_cloud_regular(cdata,nreal,ndata,nlat,nlon,nCell,&
 ! 
   isprd=int(metar_impact_radius + half)
   if(l_metar_impact_radius_change) then
-     mindx=region_dx
+     mindx=proj_dx
      isprd=int(metar_impact_radius_max/mindx + half)
      delat_radius=metar_impact_radius_max-metar_impact_radius_min
      delta_height=metar_impact_radius_max_height-metar_impact_radius_min_height
@@ -321,7 +322,7 @@ subroutine reorg_metar_cloud_regular(cdata,nreal,ndata,nlat,nlon,nCell,&
                         cdata_temp(k)=cdata(k,ista_min)
                      enddo
                      if(l_metar_impact_radius_change) then
-                        dxij=region_dx
+                        dxij=proj_dx
 
 !                      write(*,*) 'min_dist,dxij=',min_dist,dxij
 ! cloud amount

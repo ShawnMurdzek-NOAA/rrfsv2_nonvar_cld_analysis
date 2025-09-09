@@ -39,7 +39,6 @@ All namelist options are in a single section titles `&setup`
 | `metar_impact_radius_min` | 20000. | Minimum ceilometer radius of impact when `l_metar_impact_radius = .true.` (m). |
 | `metar_impact_radius_max_height` | 3000. | Height above which the ceilometer radius of impact is `metar_impact_radius_max` when `l_metar_impact_radius = .true.` (m). |
 | `metar_impact_radius_min_height` | 200. | Height below which the ceilometer radius of impact is `metar_impact_radius_min` when `l_metar_impact_radius = .true.` (m). |
-| `region_dx` | 3000. | Model mesh spacing in meters |
 | `debug` | 0 | Option to print additional output for debugging. Set to 0 to not print any additional output |
 
 ## Code Overview

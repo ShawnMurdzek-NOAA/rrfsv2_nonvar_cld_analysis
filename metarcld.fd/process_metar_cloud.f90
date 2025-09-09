@@ -29,7 +29,6 @@ program  process_metar_cloud
   use kinds, only: r_kind,i_kind,r_single
   use mpasio, only: read_MPAS_dim,read_MPAS_lat_lon
 
-  use cld_parm_array_mod, only: region_dx
   use cld_parm_array_mod, only: metar_impact_radius
   use cld_parm_array_mod, only: l_metar_impact_radius_change, &
                             metar_impact_radius_max,metar_impact_radius_min,&
@@ -66,7 +65,7 @@ program  process_metar_cloud
                   metar_impact_radius,l_metar_impact_radius_change, &
                   metar_impact_radius_max,metar_impact_radius_min, &
                   metar_impact_radius_max_height,metar_impact_radius_min_height,&
-                  region_dx,debug
+                  debug
 !
 !  ** misc
       
