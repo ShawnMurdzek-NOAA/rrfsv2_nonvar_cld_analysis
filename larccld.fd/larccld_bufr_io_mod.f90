@@ -211,7 +211,9 @@ subroutine read_NASALaRC_cloud_bufr_survey(satfile,satidgoeseast,satidgoeswest,e
  num_satid=0
  num_obstime_all=0
  num_subset_all=0
+ obs_time=0
  hhh=99
+ satid=0
  open(24,file='NASA.bufrtable')
  open(unit_in,file=trim(satfile),form='unformatted')
  call openbf(unit_in,'IN',unit_in)

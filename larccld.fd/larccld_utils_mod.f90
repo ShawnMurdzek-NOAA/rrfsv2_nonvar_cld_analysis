@@ -10,8 +10,8 @@ subroutine sortmed(p,n,is)
       real p(n)
       integer is(n)
 ! * count cloudy fov
-      real    f
-      integer cfov,temp
+      real    f,temp
+      integer cfov
       integer i,j,nm1,ip1,iold
 
       cfov = 0
