@@ -1,3 +1,6 @@
+module read_nssl_binary
+
+contains
 
 subroutine read_head_Mosaic4(infile,nx,ny,nz,rlon,rlat,rdx,rdy,var_scale)
   !=================================================================================
@@ -23,13 +26,12 @@ subroutine read_head_Mosaic4(infile,nx,ny,nz,rlon,rlat,rdx,rdy,var_scale)
   integer*4,intent(out)  :: var_scale
 
   ! variables for reading input file
-  integer                                 ::ntot, ntot2d, i, j, k, jrec, mt
-  logical                                 ::looping
+!  integer                                 :: ntot
   integer*4                               :: yr,mo,da,hr,mn,sc
-  integer*4                               :: nw_lon, nw_lat, dx, dy, dz
+  integer*4                               :: nw_lon, nw_lat, dx, dy
   integer*4                               :: map_scale, dxy_scale, z_scale
   integer*4                               :: missing_val, numrad
-  integer*4                               :: dvals(4), blank(10), temp(42)
+  integer*4                               :: dvals(4), blank(10)
   integer*4,allocatable                   :: ilevel(:)
   character(len=4)                        :: d_val
   character(len=6)                        :: var_unit
@@ -137,3 +139,5 @@ subroutine read_data_Mosaic4(infile,ntot,var)
      close(99)
 
 end subroutine read_data_Mosaic4
+
+end module read_nssl_binary

@@ -1,3 +1,9 @@
+module read_grib2
+
+use grib_mod
+
+contains
+
 subroutine read_grib2_head(filename,nx,ny,nz,rlonmin,rlatmax,rdx,rdy)
 !$$$  subprogram documentation block
 !                .      .    .                                       .
@@ -21,9 +27,12 @@ subroutine read_grib2_head(filename,nx,ny,nz,rlonmin,rlatmax,rdx,rdy)
 !$$$ end documentation block
 
 !  use gridmod, only: idsl5,regional
-  use grib_mod
 
   implicit none
+  
+! Explicitly declare external functions and subroutines
+  external :: baopenr,skgb,baread,gb_info,gf_getfld,gf_free,baclose
+
   character*256,intent(in)  :: filename
   integer, intent(out)      :: nx,ny,nz
   real,    intent(out)      :: rlonmin,rlatmax
@@ -40,7 +49,7 @@ subroutine read_grib2_head(filename,nx,ny,nz,rlonmin,rlatmax,rdx,rdy)
   integer :: icount , lengrib
   integer :: listsec0(3)
   integer :: listsec1(13)
-  integer year, month, day, hour, minute, second, fcst
+  integer year, month, day, hour, minute, second
 
   integer :: numfields,numlocal,maxlocal,ierr
   integer :: grib_edition
@@ -49,8 +58,7 @@ subroutine read_grib2_head(filename,nx,ny,nz,rlonmin,rlatmax,rdx,rdy)
   real    :: scale_factor
 !
 !
-  integer :: nn,n,j,iret
-  real :: fldmax,fldmin,sum
+  integer :: nn,n,iret
 !
 !
   scale_factor=1.0e6
@@ -182,9 +190,12 @@ subroutine read_grib2_sngle(filename,ntot,height,var)
 !$$$ end documentation block
 
 !  use gridmod, only: idsl5,regional
-  use grib_mod
 
   implicit none
+
+! Explicitly declare external functions and subroutines
+  external :: baopenr,skgb,baread,gb_info,gf_getfld,gf_free,baclose
+
   character*256,intent(in)  :: filename
   integer, intent(in)       :: ntot
   real, intent(out) :: var(ntot)
@@ -201,7 +212,7 @@ subroutine read_grib2_sngle(filename,ntot,height,var)
   integer :: icount , lengrib
   integer :: listsec0(3)
   integer :: listsec1(13)
-  integer year, month, day, hour, minute, second, fcst
+  integer year, month, day, hour, minute, second
 
   integer :: numfields,numlocal,maxlocal,ierr
   integer :: grib_edition
@@ -212,7 +223,6 @@ subroutine read_grib2_sngle(filename,ntot,height,var)
 !
 !
   integer :: nn,n,j,iret
-  real :: fldmax,fldmin,sum
 !
 !
   scale_factor=1.0e6
@@ -347,3 +357,5 @@ subroutine read_grib2_sngle(filename,ntot,height,var)
   enddo loopfile
   return
 end subroutine read_grib2_sngle
+
+end module read_grib2

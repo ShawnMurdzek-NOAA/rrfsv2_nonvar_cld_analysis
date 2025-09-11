@@ -1,3 +1,9 @@
+module read_ncep_binary
+
+use kinds, only: r_kind,i_kind
+
+contains 
+
   subroutine read_ncep_binary_head(mype,mosaicfile,mscNlon,mscNlat,mscNlev, &
                    lonMin,latMin,lonMax,latMax,dlon,dlat)
 
@@ -27,7 +33,6 @@
 !
 !_____________________________________________________________________
 !
-  use kinds, only: r_kind,i_kind
 
   implicit none
 !
@@ -72,12 +77,6 @@
   data t_lon_e /-110.0,-90.0,-80.0,-60.0,  &
                 -110.0,-90.0,-80.0,-60.0/
 
-!  ** misc
-
-  integer i,j,k,itype,iymdh,ier,jret,ifn
-
-  INTEGER(i_kind)  ::  maxlvl, tversion
-  INTEGER(i_kind)  ::  numlvl,numref
 
 !**********************************************************************
 !
@@ -151,7 +150,6 @@ subroutine read_ncep_binary_value(mype,mosaicfile,mscNlon,mscNlat,mscNlev, &
 !
 !_____________________________________________________________________
 !
-  use kinds, only: r_kind,i_kind
 
   implicit none
 !
@@ -216,3 +214,5 @@ subroutine read_ncep_binary_value(mype,mosaicfile,mscNlon,mscNlat,mscNlev, &
     stop 1234
 
 end subroutine read_ncep_binary_value
+
+end module read_ncep_binary

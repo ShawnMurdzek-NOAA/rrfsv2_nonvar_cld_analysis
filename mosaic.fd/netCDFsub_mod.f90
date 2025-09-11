@@ -1,3 +1,7 @@
+module netcdfsub
+
+contains
+
 !
 Subroutine  ifexist_file(mosaicfile,STATUS)
 !
@@ -75,7 +79,6 @@ Subroutine  GET_Mosaic_sngl_Mosaic(NCID,mscNlon,mscNlat,mscNlev,mscValue)
   INTEGER START(NDIMS), COUNT(NDIMS)
 
   REAL ::   mscValue(mscNlon,mscNlat,1,1)
-  INTEGER :: i,j
 
   START(1)=1
   START(2)=1
@@ -95,7 +98,7 @@ end subroutine GET_Mosaic_sngl_Mosaic
 
 
 Subroutine  Check_DIM_ATT_Mosaic8(NCID,mscNlon,mscNlat,mscNlev, &
-                   lonMin,latMin,lonMax,latMax,dlon,dlat)
+                   lonMin,latMax,dlon,dlat)
 !
 !  Author: Ming Hu, CAPS. University of Oklahma.
 !  
@@ -105,7 +108,7 @@ Subroutine  Check_DIM_ATT_Mosaic8(NCID,mscNlon,mscNlat,mscNlev, &
 !     mscNlon
 !     mscNlan
 !     mscNlev
-!     lonMin,latMin,lonMax,latMax,dlon,dlat
+!     lonMin,latMax,dlon,dlat
 !
 !  out:
 !     NCID
@@ -117,7 +120,7 @@ Subroutine  Check_DIM_ATT_Mosaic8(NCID,mscNlon,mscNlat,mscNlev, &
   INTEGER ::   mscNlon   ! number of longitude of mosaic data
   INTEGER ::   mscNlat   ! number of latitude of mosaic data
   INTEGER ::   mscNlev   ! number of level of mosaic data
-  REAL    ::   lonMin,latMin,lonMax,latMax
+  REAL    ::   lonMin,latMax
   REAL*8  ::   dlon,dlat
 
   INTEGER ::  NCID, STATUS
@@ -125,8 +128,6 @@ Subroutine  Check_DIM_ATT_Mosaic8(NCID,mscNlon,mscNlat,mscNlev, &
   INTEGER ::  LONLEN, LATLEN, LEVLEN
 
   REAL ::   lonMinVal
-  REAL ::   latMinVal
-  REAL ::   lonMaxVal
   REAL ::   latMaxVal
   REAL ::   dlonVal
   REAL ::   dlatVal
@@ -297,8 +298,6 @@ Subroutine  GET_DIM_ATT_Mosaic8(mosaicsngle,mscNlon,mscNlat,mscNlev, &
   INTEGER ::  LONLEN, LATLEN, LEVLEN
 
   REAL ::   lonMinVal
-  REAL ::   latMinVal
-  REAL ::   lonMaxVal
   REAL ::   latMaxVal
   REAL ::   dlonVal
   REAL ::   dlatVal
@@ -440,3 +439,5 @@ SUBROUTINE HANDLE_ERR_Mosaic(STATUS)
        STOP 'Stopped'
      ENDIF
 END SUBROUTINE HANDLE_ERR_Mosaic
+
+end module netcdfsub

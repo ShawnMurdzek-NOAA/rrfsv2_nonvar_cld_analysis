@@ -32,6 +32,13 @@ module module_read_NSSL_refmosaic
 !_____________________________________________________________________
 !
   use kinds, only: r_kind,i_kind
+  use netcdfsub, only: ifexist_file,open_mosaic,close_mosaic
+  use netcdfsub, only: get_dim_att_mosaic,get_dim_att_mosaic8
+  use netcdfsub, only: check_dim_att_mosaic,check_dim_att_mosaic8
+  use netcdfsub, only: get_mosaic_sngl_mosaic
+  use read_ncep_binary, only: read_ncep_binary_head,read_ncep_binary_value
+  use read_nssl_binary, only: read_head_mosaic4,read_data_mosaic4
+  use read_grib2, only: read_grib2_head,read_grib2_sngle
 
   implicit none
 
@@ -221,7 +228,7 @@ contains
     integer  :: var_scale
 
     integer  :: NCID
-    integer  :: ntot, ntot2d, mt
+    integer  :: ntot, ntot2d
     integer  :: nx,ny,nz
     integer  :: yr, mo, da, hr, mn, sc
     real*8   :: rdx,rdy
@@ -366,7 +373,7 @@ contains
                lonMin,latMin,lonMax,latMax,dlon,dlat)
        elseif(tversion == 8 ) then
           call Check_DIM_ATT_Mosaic8(NCID,mscNlon,mscNlat,mscNlev,  &
-               lonMin,latMin,lonMax,latMax,dlon,dlat)
+               lonMin,latMax,dlon,dlat)
        endif
        write(*,*) mscNlon,mscNlat,mscNlev
        write(*,*) 'Area of tile=',lonMin,latMin,lonMax,latMax,dlon,dlat

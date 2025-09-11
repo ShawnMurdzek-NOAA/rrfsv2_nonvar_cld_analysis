@@ -1,16 +1,17 @@
 
 # Compiler settings
 # diag-disable=10448 flag is needed to disable warning about how ifort is deprecated
-FFLAGS=-diag-disable=10448 -traceback
+#FFLAGS=-diag-disable=10448 -traceback
+FFLAGS=-diag-disable=10448 -traceback -g -warn all -check all
 
 # Components of program
-SRC=netCDFsub.f90 \
-    read_ncep_binary.f90 \
-    read_nssl_binary.f90 \
+SRC=netCDFsub_mod.f90 \
+    read_ncep_binary_mod.f90 \
+    read_nssl_binary_mod.f90 \
     read_grib2_mod.f90 \
     module_read_NSSL_mosaic.f90 \
-    write_netcdf_ref.f90 \
-    write_bufr_ref.f90 \
+    write_nsslref_mod.f90 \
+    mosaic_interp_mod.f90 \
     process_NSSL_mosaic.f90
 OBJ=${SRC:.f90=.o}
 
