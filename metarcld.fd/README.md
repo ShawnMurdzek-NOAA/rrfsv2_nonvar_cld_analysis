@@ -20,7 +20,7 @@ To run metarcld.fd by itself, one can use the sample slurm submission script pro
 
 ### Outputs
 
-- `mpas_metarcloud.bin`: Binary file with NASA LaRC data mapped to the MPAS mesh. This is the file used by cloudanalysis.fd.
+- `mpas_metarcloud.bin`: Binary file with ceilometer observations mapped to the MPAS mesh. This is the file used by cloudanalysis.fd.
 - `processed_metar_obs_mpas.txt`: Text file with the ceilometer observations processed to the MPAS mesh (if `debug = 1`).
 
 ### Namelist Options

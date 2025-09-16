@@ -251,6 +251,8 @@ program process_NSSL_mosaic
 !
   if(mype==0) then
      allocate( ref0(nCell,maxlvl) )
+  else
+     allocate( ref0(1,1) )
   endif
   call MPI_REDUCE(ref3d, ref0, nCell*maxlvl, MPI_REAL, MPI_MAX, 0, &
                   MPI_COMM_WORLD, ierror)
