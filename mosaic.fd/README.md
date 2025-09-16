@@ -1,4 +1,4 @@
-# Ceilometer Preprocessing Program
+# Radar Reflectivity Mosaic Preprocessing Program
 
 This program takes radar reflectivity mosaic observations (e.g., MRMS) and interpolates them to the MPAS mesh.
 

@@ -28,6 +28,9 @@ program process_Lightning
   use mpi
   use kinds, only: r_kind,i_kind
   use mpasio, only: read_MPAS_dim,read_MPAS_lat_lon
+  use lightning_bufr_io, only: read_lightning_bufr,write_bufr_lightning
+  use check_lght_qc, only: Check_Lightning_QC,Check_NLDN
+  use netCDFsub_lightning, only: get_dim_att_nldn,ifexist_file,get_lightning_nldn
 
 ! Modules from WPS
   use map_utils
@@ -38,10 +41,7 @@ program process_Lightning
 !
 !
 ! MPI variables
-  integer :: npe, mype, mypeLocal,ierror
-
-!
-  character*256 output_file
+  integer :: npe, mype, ierror
 
 ! Map projection
   type(proj_info) :: proj
@@ -66,8 +66,6 @@ program process_Lightning
   real,allocatable:: llat(:)    !
   integer,allocatable:: ltime(:)   !
   integer,allocatable:: lstrike(:) !
-  character*21,allocatable:: ctime(:)   !
-  real :: rtmp
   integer,allocatable:: lquality(:) !
 
   real, allocatable :: lightning(:)   ! lightning  strakes
@@ -90,15 +88,12 @@ program process_Lightning
                  obs_type,NLDN_filenum,IfAlaska,debug
 !
 !  ** misc
-      
-  CHARACTER*180   workpath
-
   integer, allocatable :: cell_id(:,:,:),lght_id(:,:,:),index_m(:,:),index_l(:,:)
   real, allocatable :: x_m(:),y_m(:),x_l(:),y_l(:)
   integer :: nCell_mp,nlght_mp
   real :: rlon,rlat,xc,yc,d,d2
   integer i,j,ii,jj,ilght,nt,icell,c_id,l_id,ic,jc,nearest_id
-  integer :: NCID, istatus
+  integer :: istatus
   integer :: numlightning,idate,filenum
   logical :: ifexist
 

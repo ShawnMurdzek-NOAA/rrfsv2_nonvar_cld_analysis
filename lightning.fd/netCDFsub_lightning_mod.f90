@@ -1,3 +1,7 @@
+module netCDFsub_lightning
+
+contains
+
 !
 Subroutine  ifexist_file(mosaicfile,STATUS)
 !
@@ -118,3 +122,5 @@ SUBROUTINE HANDLE_ERR_lightning(STATUS)
        STOP 'Stopped'
      ENDIF
 END SUBROUTINE HANDLE_ERR_lightning
+
+end module netCDFsub_lightning

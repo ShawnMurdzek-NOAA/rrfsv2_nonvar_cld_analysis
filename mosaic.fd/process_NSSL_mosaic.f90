@@ -248,6 +248,8 @@ program process_NSSL_mosaic
   call mpi_barrier(MPI_COMM_WORLD,ierror)
 !
 !  collect data from all processes to root (0)
+!  ref0 is not needed on non-root processors, so we allocate ref0 as an array with 1 element as a 
+!  dummy argument. This avoids an error when running with the -check all flag
 !
   if(mype==0) then
      allocate( ref0(nCell,maxlvl) )
