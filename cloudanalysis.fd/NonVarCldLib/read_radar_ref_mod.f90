@@ -1,3 +1,7 @@
+module read_radar_ref_mod
+
+contains
+
 SUBROUTINE read_radar_ref(mype,lunin,istart,jstart,   &
                          nlon,nlat,Nmsclvl,numref,ref_mosaic31)
 !
@@ -105,7 +109,7 @@ SUBROUTINE read_radar_ref(mype,lunin,istart,jstart,   &
 
 END SUBROUTINE read_radar_ref
 
-SUBROUTINE read_radar_ref_bin(mype,lunin,istart,jstart,nlon,nlat,Nmsclvl,ref_mosaic31)
+SUBROUTINE read_radar_ref_bin(lunin,istart,jstart,nlon,nlat,Nmsclvl,ref_mosaic31)
 !
 !
 !
@@ -123,7 +127,6 @@ SUBROUTINE read_radar_ref_bin(mype,lunin,istart,jstart,nlon,nlat,Nmsclvl,ref_mos
 !
 !
 !   input argument list:
-!     mype        - processor ID
 !     lunin       - unit in which data are read in
 !     nlon        - no. of lons on subdomain (buffer points on ends)
 !     nlat        - no. of lats on subdomain (buffer points on ends)
@@ -151,7 +154,6 @@ SUBROUTINE read_radar_ref_bin(mype,lunin,istart,jstart,nlon,nlat,Nmsclvl,ref_mos
   use kinds, only: r_single,i_kind
   implicit none
 
-  INTEGER(i_kind),intent(in) :: mype
   INTEGER(i_kind),intent(in) :: nlon,nlat
   INTEGER(i_kind),intent(in) :: istart,jstart
   integer(i_kind),intent(in) :: lunin
@@ -190,3 +192,5 @@ SUBROUTINE read_radar_ref_bin(mype,lunin,istart,jstart,nlon,nlat,Nmsclvl,ref_mos
   endif
 
 end SUBROUTINE read_radar_ref_bin
+
+end module read_radar_ref_mod

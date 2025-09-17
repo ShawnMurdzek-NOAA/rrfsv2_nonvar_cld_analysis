@@ -1,4 +1,8 @@
-SUBROUTINE convert_lghtn2ref(mype,nlon,nlat,nsig,ref_mos_3d,lightning,h_bk)
+module convert_lghtn2ref_mod
+
+contains
+
+SUBROUTINE convert_lghtn2ref(nlon,nlat,nsig,ref_mos_3d,lightning,h_bk)
 !
 !$$$  subprogram documentation block
 !                .      .    .                                       .
@@ -14,7 +18,6 @@ SUBROUTINE convert_lghtn2ref(mype,nlon,nlat,nsig,ref_mos_3d,lightning,h_bk)
 !
 !
 !   input argument list:
-!     mype        - processor ID
 !     nlon        - no. of lons on subdomain (buffer points on ends)
 !     nlat        - no. of lats on subdomain (buffer points on ends)
 !     nsig        - no. of levels
@@ -43,7 +46,6 @@ SUBROUTINE convert_lghtn2ref(mype,nlon,nlat,nsig,ref_mos_3d,lightning,h_bk)
   use kinds, only: r_kind,i_kind,r_single
   implicit none
 
-  INTEGER(i_kind),intent(in)   :: mype
   INTEGER(i_kind),intent(in)   :: nlon,nlat,nsig
   real(r_single), intent(in)   :: h_bk(nlon,nlat,nsig)                  ! height
   real(r_single), intent(in)   :: lightning(nlon,nlat)
@@ -195,3 +197,5 @@ SUBROUTINE convert_lghtn2ref(mype,nlon,nlat,nsig,ref_mos_3d,lightning,h_bk)
   ENDDO
 
 END SUBROUTINE convert_lghtn2ref
+
+end module convert_lghtn2ref_mod

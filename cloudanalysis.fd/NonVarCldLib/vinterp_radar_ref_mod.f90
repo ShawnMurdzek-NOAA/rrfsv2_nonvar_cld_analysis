@@ -1,4 +1,8 @@
-SUBROUTINE vinterp_radar_ref(mype,nlon,nlat,nsig,Nmsclvl,ref_mos_3d,ref_mosaic31,h_bk,zh)
+module vinterp_radar_ref_mod
+
+contains
+
+SUBROUTINE vinterp_radar_ref(nlon,nlat,nsig,Nmsclvl,ref_mos_3d,ref_mosaic31,h_bk,zh)
 !
 !
 !$$$  subprogram documentation block
@@ -15,7 +19,6 @@ SUBROUTINE vinterp_radar_ref(mype,nlon,nlat,nsig,Nmsclvl,ref_mos_3d,ref_mosaic31
 !
 !
 !   input argument list:
-!     mype        - processor ID
 !     nlon        - no. of lons on subdomain (buffer points on ends)
 !     nlat        - no. of lats on subdomain (buffer points on ends)
 !     nsig        - no. of levels
@@ -46,7 +49,6 @@ SUBROUTINE vinterp_radar_ref(mype,nlon,nlat,nsig,Nmsclvl,ref_mos_3d,ref_mosaic31
   use kinds, only: r_kind,i_kind, r_single
   implicit none
 
-  INTEGER(i_kind), intent(in) ::  mype
   INTEGER(i_kind), intent(in) ::  nlon
   INTEGER(i_kind), intent(in) ::  nlat
   INTEGER(i_kind), intent(in) ::  nsig
@@ -140,3 +142,5 @@ SUBROUTINE vinterp_radar_ref(mype,nlon,nlat,nsig,Nmsclvl,ref_mos_3d,ref_mosaic31
 !
 
 END SUBROUTINE vinterp_radar_ref
+
+end module vinterp_radar_ref_mod

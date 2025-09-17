@@ -1,3 +1,7 @@
+module adaslib_mod
+
+contains
+
 !
 !$$$  subprogram documentation block
 !                .      .    .                                       .
@@ -234,7 +238,7 @@ FUNCTION f_es( p, t )
 !
 !-----------------------------------------------------------------------
 !
-  REAL :: f_esl, f_esi
+!  REAL :: f_esl, f_esi
 
 !fpp$ expand (f_esl)
 !fpp$ expand (f_esi)
@@ -421,7 +425,7 @@ FUNCTION f_qvsat( p, t )
 !
 !-----------------------------------------------------------------------
 !
-  REAL :: f_es
+!  REAL :: f_es
 !
 !@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 !
@@ -472,3 +476,5 @@ SUBROUTINE getdays(nday,iyear,imonth,iday)
   if(mod(iyear,4) == 0 .and. imonth > 2 ) nday=nday+1
 
 END SUBROUTINE getdays
+
+end module adaslib_mod

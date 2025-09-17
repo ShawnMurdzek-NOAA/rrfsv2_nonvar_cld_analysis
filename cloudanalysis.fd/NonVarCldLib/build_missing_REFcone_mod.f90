@@ -1,4 +1,8 @@
-SUBROUTINE build_missing_REFcone(mype,nlon,nlat,nsig,krad_bot_in,ref_mos_3d,h_bk,pblh)
+module build_missing_REFcone_mod
+
+contains
+
+SUBROUTINE build_missing_REFcone(nlon,nlat,nsig,ref_mos_3d,h_bk,pblh)
 !
 !  radar observation
 !
@@ -22,11 +26,10 @@ SUBROUTINE build_missing_REFcone(mype,nlon,nlat,nsig,krad_bot_in,ref_mos_3d,h_bk
 !
 !
 !   input argument list:
-!     mype        - processor ID
 !     nlon        - no. of lons on subdomain
 !     nlat        - no. of lats on subdomain
 !     nsig        - no. of levels
-!     krad_bot    - radar bottom level
+!     krad_bot_in - radar bottom level (has since been removed from inputs)
 !     ref_mos_3d  - 3D radar reflectivity
 !     h_bk        - 3D background height
 !     pblh        - PBL height in grid
@@ -53,12 +56,11 @@ SUBROUTINE build_missing_REFcone(mype,nlon,nlat,nsig,krad_bot_in,ref_mos_3d,h_bk
   use kinds, only: r_kind,i_kind,r_single
   implicit none
 
-  INTEGER(i_kind), intent(in)   :: mype
   INTEGER(i_kind), intent(in)   :: nlon,nlat,nsig
   real(r_single),  intent(in)   :: h_bk(nlon,nlat,nsig)           ! 3D height
   real(r_single),  intent(inout):: ref_mos_3d(nlon,nlat,nsig)     ! reflectivity in grid
   real(r_single),  intent(in)   :: pblh(nlon,nlat)                ! PBL height
-  real(r_single),  intent(in)   :: krad_bot_in                                   
+!  real(r_single),  intent(in)   :: krad_bot_in                                   
 !
   integer(i_kind) :: krad_bot,ifmissing
 !
@@ -243,3 +245,5 @@ SUBROUTINE build_missing_REFcone(mype,nlon,nlat,nsig,krad_bot_in,ref_mos_3d,h_bk
   ENDDO
 
 END SUBROUTINE build_missing_REFcone
+
+end module build_missing_REFcone_mod

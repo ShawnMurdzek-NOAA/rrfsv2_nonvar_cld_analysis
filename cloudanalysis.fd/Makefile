@@ -1,21 +1,22 @@
 
 # Compiler settings
 # diag-disable=10448 flag is needed to disable warning about how ifort is deprecated
-FFLAGS=-diag-disable=10448 -traceback
+#FFLAGS=-diag-disable=10448 -traceback
+FFLAGS=-diag-disable=10448 -traceback -g -warn all -check all
 
 # Components of program
-SRC=NonVarCldLib/map_ctp.f90 \
-    NonVarCldLib/map_ctp_lar.f90 \
-    NonVarCldLib/read_Surface.f90 \
-    NonVarCldLib/read_radar_ref.f90 \
-    NonVarCldLib/read_Lightning_cld.f90 \
-    NonVarCldLib/read_nasalarc_cld.f90 \
-    NonVarCldLib/vinterp_radar_ref.f90 \
-    NonVarCldLib/build_missing_REFcone.f90 \
-    NonVarCldLib/convert_lghtn2ref.f90 \
-    NonVarCldLib/adaslib.f90 \
-    NonVarCldLib/BckgrndCC.f90 \
-    NonVarCldLib/cloudCover_Surface.f90 \
+SRC=NonVarCldLib/map_ctp_mod.f90 \
+    NonVarCldLib/map_ctp_lar_mod.f90 \
+    NonVarCldLib/read_Surface_mod.f90 \
+    NonVarCldLib/read_radar_ref_mod.f90 \
+    NonVarCldLib/read_Lightning_cld_mod.f90 \
+    NonVarCldLib/read_nasalarc_cld_mod.f90 \
+    NonVarCldLib/vinterp_radar_ref_mod.f90 \
+    NonVarCldLib/build_missing_REFcone_mod.f90 \
+    NonVarCldLib/convert_lghtn2ref_mod.f90 \
+    NonVarCldLib/adaslib_mod.f90 \
+    NonVarCldLib/BckgrndCC_mod.f90 \
+    NonVarCldLib/cloudCover_Surface_mod.f90 \
     NonVarCldLib/cloudCover_NESDIS.f90 \
     NonVarCldLib/cloudLayers.f90 \
     NonVarCldLib/mthermo.f90 \

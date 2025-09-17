@@ -1,4 +1,8 @@
-SUBROUTINE read_Surface(mype,lunin,istart,jstart,nlon,nlat,& 
+module read_Surface_mod
+
+contains
+
+SUBROUTINE read_Surface(lunin,istart,jstart,& 
                   numsao,NVARCLD_P,OI,OJ,OCLD,OWX,Oelvtn,Odist,cstation, &
                   OIstation,OJstation)
 !
@@ -16,12 +20,9 @@ SUBROUTINE read_Surface(mype,lunin,istart,jstart,nlon,nlat,&
 !
 !
 !   input argument list:
-!     mype        - processor ID
 !     lunin       - unit in which data are read in
 !     jstart      - start lon of the whole array on each pe
 !     istart      - start lat of the whole array on each pe
-!     nlon        - no. of lons on subdomain (buffer points on ends)
-!     nlat        - no. of lats on subdomain (buffer points on ends)
 !     numsao      - maximum observation number (observation number)
 !     NVARCLD_P   - first dimension of OLCD
 !
@@ -55,11 +56,9 @@ SUBROUTINE read_Surface(mype,lunin,istart,jstart,nlon,nlat,&
 
   implicit none
 
-  integer(i_kind), intent(in) :: mype
   integer(i_kind), intent(in) :: lunin
   integer(i_kind), intent(in) :: istart
   integer(i_kind), intent(in) :: jstart
-  INTEGER(i_kind), intent(in) :: nlon,nlat
   INTEGER(i_kind), intent(in) :: numsao
   INTEGER(i_kind), intent(in) :: NVARCLD_P
 
@@ -237,3 +236,4 @@ SUBROUTINE read_Surface(mype,lunin,istart,jstart,nlon,nlat,&
 
 END SUBROUTINE read_Surface
 
+end module read_Surface_mod

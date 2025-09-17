@@ -1,4 +1,8 @@
-SUBROUTINE read_NASALaRC_fv3(mype,lunin,nlon,nlat,istart,jstart,nasalarc)
+module read_NASALaRC_mod
+
+contains
+
+SUBROUTINE read_NASALaRC_fv3(lunin,nlon,nlat,istart,jstart,nasalarc)
 !
 !$$$  subprogram documentation block
 !                .      .    .                                       .
@@ -14,7 +18,6 @@ SUBROUTINE read_NASALaRC_fv3(mype,lunin,nlon,nlat,istart,jstart,nasalarc)
 !    2020-08-13  Hu  Add NCO document block
 !
 !   input argument list:
-!     mype        - processor ID
 !     lunin       - unit in which data are read in
 !     nlon        - no. of lons on subdomain (buffer points on ends)
 !     nlat        - no. of lats on subdomain (buffer points on ends)
@@ -42,7 +45,6 @@ SUBROUTINE read_NASALaRC_fv3(mype,lunin,nlon,nlat,istart,jstart,nasalarc)
   implicit none
 
   integer(i_kind),intent(in) :: lunin
-  integer(i_kind),intent(in) :: mype
   integer(i_kind),intent(in) :: nlon,nlat
   integer(i_kind),intent(in) :: istart,jstart
   real(r_single), intent(out) :: nasalarc(nlon,nlat,5)
@@ -293,6 +295,7 @@ SUBROUTINE read_map_nasalarc(mype,lunin,numobs,istart,jstart,nlon,nlat,  &
 !
 
   use kinds, only: r_single,i_kind,r_kind
+  use map_ctp_lar_mod, only: map_ctp_lar
 
   implicit none
 
@@ -344,7 +347,7 @@ SUBROUTINE read_map_nasalarc(mype,lunin,numobs,istart,jstart,nlon,nlat,  &
 
   ib=jstart   ! begin i point of this domain
   jb=istart   ! begin j point of this domain
-  call map_ctp_lar(mype,ib,jb,nlon,nlat,nn_obs,numobs,data_s,sat_ctp,sat_tem,w_frac,w_lwp,nlev_cld,ioption)
+  call map_ctp_lar(ib,jb,nlon,nlat,nn_obs,numobs,data_s,sat_ctp,sat_tem,w_frac,w_lwp,nlev_cld,ioption)
 !!
 !  filling boundarys
 !
@@ -409,3 +412,5 @@ SUBROUTINE read_map_nasalarc(mype,lunin,numobs,istart,jstart,nlon,nlat,  &
   
 
 END SUBROUTINE read_map_nasalarc
+
+end module read_NASALaRC_mod

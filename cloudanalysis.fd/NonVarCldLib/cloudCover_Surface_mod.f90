@@ -1,8 +1,17 @@
+module cloudCover_Surface_mod
+
+contains
+
 SUBROUTINE cloudCover_Surface(mype,nlat,nlon,nsig,thunderRadius,&
-                        cld_bld_hgt,t_bk,p_bk,q,h_bk,zh,  &
+                        cld_bld_hgt,h_bk,zh,  &
                         mxst_p,NVARCLD_P,numsao,OI,OJ,OCLD,OWX,Oelvtn,Odist,&
                         cld_cover_3d,cld_type_3d,wthr_type,pcp_type_3d,     &
-                        watericemax, kwatericemax,vis2qc)
+                        vis2qc)
+!SUBROUTINE cloudCover_Surface(mype,nlat,nlon,nsig,thunderRadius,&
+!                        cld_bld_hgt,t_bk,p_bk,q,h_bk,zh,  &
+!                        mxst_p,NVARCLD_P,numsao,OI,OJ,OCLD,OWX,Oelvtn,Odist,&
+!                        cld_cover_3d,cld_type_3d,wthr_type,pcp_type_3d,     &
+!                        watericemax, kwatericemax,vis2qc)
 !
 !$$$  subprogram documentation block
 !                .      .    .                                       .
@@ -67,6 +76,7 @@ SUBROUTINE cloudCover_Surface(mype,nlat,nlon,nsig,thunderRadius,&
 !
 
   use kinds, only: r_single,i_kind,r_kind
+  use BckgrndCC_mod, only: BckgrndCC
 
   implicit none
 
@@ -93,14 +103,14 @@ SUBROUTINE cloudCover_Surface(mype,nlat,nlon,nsig,thunderRadius,&
 !
 !  background
 !
-  real(r_single),intent(in) :: t_bk(nlon,nlat,nsig)  ! temperature
-  real(r_single),intent(in) :: p_bk(nlon,nlat,nsig)  ! pressure
+!  real(r_single),intent(in) :: t_bk(nlon,nlat,nsig)  ! temperature
+!  real(r_single),intent(in) :: p_bk(nlon,nlat,nsig)  ! pressure
   real(r_single),intent(in) :: zh(nlon,nlat)         ! terrain
-  real(r_single),intent(in) :: q(nlon,nlat,nsig)     ! moisture, water vapor mixing ratio (kg/kg)
+!  real(r_single),intent(in) :: q(nlon,nlat,nsig)     ! moisture, water vapor mixing ratio (kg/kg)
   real(r_single),intent(in) :: h_bk(nlon,nlat,nsig)  ! height
 !
-  REAL(r_single),intent(in)   :: watericemax(mxst_p)  ! max of background total liquid water in station
-  INTEGER(i_kind),intent(in):: kwatericemax(nlon,nlat)  ! lowest level of background total liquid water in grid
+!  REAL(r_single),intent(in)   :: watericemax(mxst_p)  ! max of background total liquid water in station
+!  INTEGER(i_kind),intent(in):: kwatericemax(nlon,nlat)  ! lowest level of background total liquid water in grid
 !
 !  Variables for cloud analysis
 !
@@ -435,3 +445,4 @@ SUBROUTINE cloudCover_Surface(mype,nlat,nlon,nsig,thunderRadius,&
 
 END SUBROUTINE cloudCover_Surface
 
+end module cloudCover_Surface_mod

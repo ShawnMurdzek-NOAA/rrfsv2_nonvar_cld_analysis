@@ -1,3 +1,7 @@
+module read_Lightning_mod
+
+contains
+
 SUBROUTINE read_Lightning2cld(obsfile,nlon,nlat,istart,jstart,lightning,&
                               istat_lightning)
 !
@@ -119,3 +123,5 @@ SUBROUTINE read_Lightning2cld(obsfile,nlon,nlat,istart,jstart,lightning,&
   write(6,*) 'read in ligthning number=',num,istat_lightning
 
 END SUBROUTINE read_Lightning2cld
+
+end module read_Lightning_mod

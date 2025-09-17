@@ -389,7 +389,7 @@ program cloudanalysis
      allocate(oistation(numsao))
      allocate(ojstation(numsao))
      allocate(wimaxstation(numsao))
-     call read_Surface(mype,lunin,istart,jstart,lon2,lat2, &
+     call read_Surface(lunin,istart,jstart, &
                        numsao,nvarcld_p,oi,oj,ocld,owx,oelvtn,&
                        odist,cstation,oistation,ojstation)
 
@@ -628,17 +628,17 @@ program cloudanalysis
 !!
 !  call MPI_Barrier(mpi_comm_world, ierror)
   if(istat_radar ==  1 ) then
-     call vinterp_radar_ref(mype,lon2,lat2,nsig,nmsclvl_radar, &
+     call vinterp_radar_ref(lon2,lat2,nsig,nmsclvl_radar, &
                           ref_mos_3d,ref_mosaic31,h_bk,zh)
      deallocate( ref_mosaic31 )
      ref_mos_3d_tten=ref_mos_3d
-     call build_missing_REFcone(mype,lon2,lat2,nsig,krad_bot,ref_mos_3d_tten,h_bk,pblh)
+     call build_missing_REFcone(lon2,lat2,nsig,ref_mos_3d_tten,h_bk,pblh)
   endif
 !!
 !!  2.8 convert lightning to reflectivity 
 !!  
   if(istat_lightning ==  1 ) then
-     call convert_lghtn2ref(mype,lon2,lat2,nsig,ref_mos_3d_tten,lightning,h_bk)
+     call convert_lghtn2ref(lon2,lat2,nsig,ref_mos_3d_tten,lightning,h_bk)
   endif
 !!
 !!
@@ -660,11 +660,17 @@ program cloudanalysis
 !!
 !  call MPI_Barrier(mpi_comm_world, ierror)
   if(istat_surface ==  1) then
+     ! Remove unused variables
+     !call cloudCover_surface(mype,lat2,lon2,nsig,thunderRadius,           &
+     !         cld_bld_hgt,t_bk,p_bk,q_bk,h_bk,zh,                         &
+     !         numsao,nvarcld_p,numsao,oi,oj,ocld,owx,oelvtn,odist,        &
+     !         cld_cover_3d,cld_type_3d,wthr_type_2d,pcp_type_3d,          &
+     !         wimaxstation, kwatericemax,vis2qc)
      call cloudCover_surface(mype,lat2,lon2,nsig,thunderRadius,           &
-              cld_bld_hgt,t_bk,p_bk,q_bk,h_bk,zh,                         &
+              cld_bld_h_bk,zh,                                            &
               numsao,nvarcld_p,numsao,oi,oj,ocld,owx,oelvtn,odist,        &
               cld_cover_3d,cld_type_3d,wthr_type_2d,pcp_type_3d,          &
-              wimaxstation, kwatericemax,vis2qc)
+              vis2qc)
      write(6,*) 'gsdcloudanalysis:',                        &
                    'success in cloud cover analysis using surface data'
   endif
