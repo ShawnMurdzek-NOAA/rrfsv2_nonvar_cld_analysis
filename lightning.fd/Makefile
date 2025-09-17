@@ -1,8 +1,8 @@
 
 # Compiler settings
 # diag-disable=10448 flag is needed to disable warning about how ifort is deprecated
-#FFLAGS=-diag-disable=10448 -traceback
-FFLAGS=-diag-disable=10448 -traceback -g -warn all -check all
+FFLAGS=-diag-disable=10448 -traceback
+#FFLAGS=-diag-disable=10448 -traceback -g -warn all -check all
 
 # Components of program
 SRC=lightning_bufr_io_mod.f90 \

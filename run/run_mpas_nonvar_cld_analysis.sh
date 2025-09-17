@@ -14,9 +14,9 @@
 machine='gaeaC6'
 env_dir='../env/'
 fix_dir='../fix/'
-obs_dir="../../test_data/obs"
-mpas_invariant_file="../../test_data/south3.5km.invariant.nc_L60_RAP"
-mpasout_file="../../test_data/mpas_south3.5km/mpasout.2024-05-08_13.00.00.nc"
+obs_dir="../../../../test_data/obs"
+mpas_invariant_file="../../../../test_data/south3.5km.invariant.nc_L60_RAP"
+mpasout_file="../../../../test_data/mpas_south3.5km/mpasout.2024-05-08_13.00.00.nc"
 dx=3500.0
 valid=2024050813
 proj_name='CONUS'
