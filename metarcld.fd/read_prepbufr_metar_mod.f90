@@ -3,7 +3,7 @@ module read_prepbufr_metar
 contains
 
 subroutine read_prepbufr_metarcld(infile,analysis_time,analysis_minute,&
-                                  twindin,nCell,lat_m,lon_m)
+                                  twindin,nCell,lat_m,lon_m,proj_name)
 !$$$  subprogram documentation block
 !                .      .    .                                       .
 ! subprogram:  read_prepbuf_emtarcld        read metar cld obs from prepbufr file
@@ -28,7 +28,7 @@ subroutine read_prepbufr_metarcld(infile,analysis_time,analysis_minute,&
   use cld_parm_array_mod, only : obstype, sis, nchanl,nreal,ilat,ilon,ndata
   use cld_parm_array_mod, only : cdata_regular
   use map_utils
-  use misc_definitions_module
+  use map_proj_helper, only: init_proj,write_corners
   use reorg_metar_cloud, only: reorg_metar_cloud_regular
 
   implicit none
@@ -45,6 +45,7 @@ subroutine read_prepbufr_metarcld(infile,analysis_time,analysis_minute,&
   integer                               ,intent(in   ) :: analysis_minute
   integer                               ,intent(in   ) :: nCell
   real                                  ,intent(in   ),dimension(nCell) :: lat_m,lon_m
+  character(len=25)                     ,intent(in   ) :: proj_name
 
 ! Declare local parameters
   real(r_kind),parameter :: bmiss= 10.e10_r_kind
@@ -112,10 +113,6 @@ subroutine read_prepbufr_metarcld(infile,analysis_time,analysis_minute,&
 
 ! Map projection
   type(proj_info) :: proj
-  integer :: nlat, nlon
-  real :: lat1, lon1, truelat1, truelat2, stdlon, dx, knowni, knownj
-  real :: ll_lat, ur_lat, left_lat, bot_lat, right_lat, top_lat
-  real :: ll_lon, ur_lon, left_lon, bot_lon, right_lon, top_lon
 
 ! MPAS coordinates in map projection space
   real,dimension(nCell) :: x_mp_m, y_mp_m
@@ -132,51 +129,10 @@ subroutine read_prepbufr_metarcld(infile,analysis_time,analysis_minute,&
 
 !------------------------------------------------------------------------
 
-! define map projection (similar to Lambert Conformal from HRRR)
+! define map projection
 
-  lat1 = 38.5
-  lon1 = -97.5
-  truelat1 = 38.5
-  truelat2 = 38.5
-  stdlon = -97.5
-  dx = 3000.
-! HRRR grid
-!  nlat = 1060
-!  nlon = 1800
-! Slightly larger grid for MPAS
-  nlat = 1200
-  nlon = 2000
-  knowni = 0.5 * nlon - 1.
-  knownj = 0.5 * nlat - 1.
-
-  call map_set(PROJ_LC, &
-               proj, &
-               lat1=lat1, &
-               lon1=lon1, &
-               truelat1=truelat1, &
-               truelat2=truelat2, &
-               stdlon=stdlon, &
-               dx=dx, &
-               knowni=knowni, &
-               knownj=knownj)
-
-! get corners of map projection
-
-  call ij_to_latlon(proj, 0., 0., ll_lat, ll_lon)
-  call ij_to_latlon(proj, real(nlon), real(nlat), ur_lat, ur_lon)
-  call ij_to_latlon(proj, 0., real(knowni), left_lat, left_lon)
-  call ij_to_latlon(proj, real(knownj), 0., bot_lat, bot_lon)
-  call ij_to_latlon(proj, real(nlon), knowni, right_lat, right_lon)
-  call ij_to_latlon(proj, real(knownj), real(nlat), top_lat, top_lon)
-
-  write(6,*)
-  write(6,*) 'map projection:'
-  write(6,*) 'llcrnr    =', ll_lat, ll_lon
-  write(6,*) 'urcrnr    =', ur_lat, ur_lon
-  write(6,*) 'left ctr  =', left_lat, left_lon
-  write(6,*) 'bot ctr   =', bot_lat, bot_lon
-  write(6,*) 'right ctr =', right_lat, right_lon
-  write(6,*) 'top ctr   =', top_lat, top_lon
+  call init_proj(proj, proj_name)
+  call write_corners(proj)
 
 !------------------------------------------------------------------------
 
@@ -225,8 +181,8 @@ subroutine read_prepbufr_metarcld(infile,analysis_time,analysis_minute,&
            call latlon_to_ij(proj,rlat,rlon,xc,yc)
            dlon=xc
            dlat=yc
-           if( (int(dlon) <= 0 .or. int(dlon) >= nlon) .or. &
-               (int(dlat) <= 0 .or. int(dlat) >= nlat) ) cycle loop_readsb
+           if( (int(dlon) <= 0 .or. int(dlon) >= proj%nlon) .or. &
+               (int(dlat) <= 0 .or. int(dlat) >= proj%nlat) ) cycle loop_readsb
 
 
 !------------------------------------------------------------------------
@@ -376,8 +332,8 @@ subroutine read_prepbufr_metarcld(infile,analysis_time,analysis_minute,&
   if(metarcldobs .and. ndata > 0) then
      maxobs=2000000
      allocate(cdata_all(nreal,maxobs))
-     call reorg_metar_cloud_regular(cdata_out,nreal,ndata,nlat,nlon,nCell,&
-                                    x_mp_m,y_mp_m,dx,cdata_all,maxobs,iout)
+     call reorg_metar_cloud_regular(cdata_out,nreal,ndata,proj%nlat,proj%nlon,nCell,&
+                                    x_mp_m,y_mp_m,proj%dx,cdata_all,maxobs,iout)
      ndata=iout
      deallocate(cdata_out)
      allocate(cdata_regular(nreal,ndata))

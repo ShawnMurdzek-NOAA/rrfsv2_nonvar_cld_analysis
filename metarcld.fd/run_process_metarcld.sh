@@ -16,7 +16,7 @@ fix_dir='../fix/'
 obs_dir="../../test_data/obs"
 mpas_mesh_file="../../test_data/mpas_south_3.5km.grid.nc"
 valid=2024050813
-
+proj_name='CONUS'
 
 # Run Program
 # =========================
@@ -42,6 +42,7 @@ cat << EOF > namelist.metarcld
   prepbufrfile='prepbufr'
   twindin=0.5,
   metar_impact_radius=17,
+  proj_name='${proj_name}',
   debug=1,
  /
 EOF

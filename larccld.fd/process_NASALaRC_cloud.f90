@@ -29,7 +29,7 @@ program  process_NASALaRC_cloud
   use kinds, only: r_kind,i_kind,r_single
   use mpasio, only: read_MPAS_dim,read_MPAS_lat_lon
   use map_utils
-  use misc_definitions_module
+  use map_proj_helper, only: init_proj,write_corners
   use larccld_utils, only: sortmed,compute_haversine_dist
   use larccld_bufr_io, only: read_NASALaRC_cloud_bufr,read_NASALaRC_cloud_bufr_survey
   use larccld_bufr_io, only: write_bufr_NASALaRC
@@ -40,10 +40,6 @@ program  process_NASALaRC_cloud
 !
 ! Map projection
   type(proj_info) :: proj
-  integer :: nlat, nlon
-  real :: lat1, lon1, truelat1, truelat2, stdlon, dx, knowni, knownj
-  real :: ll_lat, ur_lat, left_lat, bot_lat, right_lat, top_lat
-  real :: ll_lon, ur_lon, left_lon, bot_lon, right_lon, top_lon
 !
 ! MPI variables
   integer :: npe, mype,ierror
@@ -102,9 +98,10 @@ program  process_NASALaRC_cloud
   integer(i_kind)    :: boxhalfx(boxMAX), boxhalfy(boxMAX)
   real (r_kind)      :: boxlat0(boxMAX)
   real (r_kind)      :: userDX
+  character(len=25)  :: proj_name
   integer            :: debug
   namelist/setup/ analysis_time, ioption, npts_rad,bufrfile, &
-                  boxhalfx, boxhalfy, boxlat0,userDX,debug
+                  boxhalfx, boxhalfy, boxlat0,userDX,proj_name,debug
 !
 !
 !  ** misc
@@ -146,6 +143,7 @@ program  process_NASALaRC_cloud
       ! * ioption = 2 is median of cloudy fov
      ioption = 2
      userDX=3000.0
+     proj_name='CONUS'
      debug=0
  
      inquire(file='namelist.nasalarc', EXIST=ifexist )
@@ -164,52 +162,10 @@ program  process_NASALaRC_cloud
      endif
 
 !
-! define map projection (Lambert Conformal, slightly larger than the HRRR domain)
+! define map projection
 !
-
-     lat1 = 38.5
-     lon1 = -97.5
-     truelat1 = 38.5
-     truelat2 = 38.5
-     stdlon = -97.5
-     dx = 3000.
-! HRRR grid
-!     nlat = 1060
-!     nlon = 1800
-! Slightly larger grid for MPAS
-     nlat = 1200
-     nlon = 2000
-     knowni = 0.5 * nlon - 1.
-     knownj = 0.5 * nlat - 1.
-
-     call map_set(PROJ_LC, &
-                  proj, &
-                  lat1=lat1, &
-                  lon1=lon1, &
-                  truelat1=truelat1, &
-                  truelat2=truelat2, &
-                  stdlon=stdlon, &
-                  dx=dx, &
-                  knowni=knowni, &
-                  knownj=knownj)
-
-! get corners of map projection
-
-     call ij_to_latlon(proj, 0., 0., ll_lat, ll_lon)
-     call ij_to_latlon(proj, real(nlon), real(nlat), ur_lat, ur_lon)
-     call ij_to_latlon(proj, 0., real(knowni), left_lat, left_lon)
-     call ij_to_latlon(proj, real(knownj), 0., bot_lat, bot_lon)
-     call ij_to_latlon(proj, real(nlon), knowni, right_lat, right_lon)
-     call ij_to_latlon(proj, real(knownj), real(nlat), top_lat, top_lon)
-
-     write(6,*)
-     write(6,*) 'map projection:'
-     write(6,*) 'llcrnr    =', ll_lat, ll_lon
-     write(6,*) 'urcrnr    =', ur_lat, ur_lon
-     write(6,*) 'left ctr  =', left_lat, left_lon
-     write(6,*) 'bot ctr   =', bot_lat, bot_lon
-     write(6,*) 'right ctr =', right_lat, right_lon
-     write(6,*) 'top ctr   =', top_lat, top_lon
+    call init_proj(proj, proj_name)
+    call write_corners(proj)
 
 !
 ! read in MPAS mesh information
@@ -284,10 +240,16 @@ program  process_NASALaRC_cloud
 ! -----------------------------------------------------------
 ! -----------------------------------------------------------
 !
-     allocate (Pxx(nlon,nlat,nfov),Txx(nlon,nlat,nfov),WPxx(nlon,nlat,nfov))
-     allocate (xdist(nlon,nlat,nfov), xxxdist(nfov))
-     allocate (latxx(nlon,nlat,nfov), lonxx(nlon,nlat,nfov))
-     allocate (PHxx(nlon,nlat,nfov),index(nlon,nlat), jndex(nfov))
+     allocate (Pxx(proj%nlon,proj%nlat,nfov))
+     allocate (Txx(proj%nlon,proj%nlat,nfov))
+     allocate (WPxx(proj%nlon,proj%nlat,nfov))
+     allocate (xdist(proj%nlon,proj%nlat,nfov))
+     allocate (xxxdist(nfov))
+     allocate (latxx(proj%nlon,proj%nlat,nfov))
+     allocate (lonxx(proj%nlon,proj%nlat,nfov))
+     allocate (PHxx(proj%nlon,proj%nlat,nfov))
+     allocate (index(proj%nlon,proj%nlat))
+     allocate (jndex(nfov))
      index=0
 
      do ipt=1,numobs
@@ -313,10 +275,10 @@ program  process_NASALaRC_cloud
 
          ii1 = int(xc+0.5)
          jj1 = int(yc+0.5)
-         if ( (jj1-1.ge.1 .and. jj1+1.le.nlat) .and.  &
-              (ii1-1.ge.1 .and. ii1+1.le.nlon) )    then
-            do jj = max(1,jj1-nptsy), min(nlat,jj1+nptsy)
-               do ii = max(1,ii1-nptsx), min(nlon,ii1+nptsx)
+         if ( (jj1-1.ge.1 .and. jj1+1.le.proj%nlat) .and.  &
+              (ii1-1.ge.1 .and. ii1+1.le.proj%nlon) )    then
+            do jj = max(1,jj1-nptsy), min(proj%nlat,jj1+nptsy)
+               do ii = max(1,ii1-nptsx), min(proj%nlon,ii1+nptsx)
 ! * We check multiple data within gridbox
                   if (index(ii,jj).lt.nfov) then
                       index(ii,jj) = index(ii,jj) + 1
@@ -370,7 +332,7 @@ program  process_NASALaRC_cloud
        ii1 = int(xc+0.5)
        jj1 = int(yc+0.5)
 
-       if (ii1 < 1 .or. jj1 < 1 .or. ii1 > nlon .or. jj1 > nlat) then
+       if (ii1 < 1 .or. jj1 < 1 .or. ii1 > proj%nlon .or. jj1 > proj%nlat) then
          noutside = noutside + 1
        else
 

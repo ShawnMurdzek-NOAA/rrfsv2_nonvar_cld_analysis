@@ -39,6 +39,7 @@ All namelist options are in a single section titles `&setup`
 | `metar_impact_radius_min` | 20000. | Minimum ceilometer radius of impact when `l_metar_impact_radius = .true.` (m). |
 | `metar_impact_radius_max_height` | 3000. | Height above which the ceilometer radius of impact is `metar_impact_radius_max` when `l_metar_impact_radius = .true.` (m). |
 | `metar_impact_radius_min_height` | 200. | Height below which the ceilometer radius of impact is `metar_impact_radius_min` when `l_metar_impact_radius = .true.` (m). |
+| `proj_name` | CONUS | Map projection to use. Must be defined in `../share/map_proj_helper_mod.f90`. |
 | `debug` | 0 | Option to print additional output for debugging. Set to 0 to not print any additional output |
 
 ## Code Overview

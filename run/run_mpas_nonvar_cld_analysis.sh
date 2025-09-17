@@ -19,6 +19,7 @@ mpas_invariant_file="../../test_data/south3.5km.invariant.nc_L60_RAP"
 mpasout_file="../../test_data/mpas_south3.5km/mpasout.2024-05-08_13.00.00.nc"
 dx=3500.0
 valid=2024050813
+proj_name='CONUS'
 
 # Option to run each component
 run_larccld=1
@@ -75,6 +76,7 @@ cat << EOF > namelist.nasalarc
   npts_rad=3,
   ioption = 2,
   userDX = ${dx},
+  proj_name = '${proj_name}',
   debug=1,
  /
 EOF
@@ -104,6 +106,7 @@ cat << EOF > namelist.lightning
   trange_start=-10,
   trange_end=10,
   obs_type = "bufr",
+  proj_name = '${proj_name}',
   debug=1
  /
 
@@ -133,6 +136,7 @@ cat << EOF > namelist.metarcld
   prepbufrfile='prepbufr'
   twindin=0.5,
   metar_impact_radius=17,
+  proj_name = '${proj_name}',
   debug=1,
  /
 EOF

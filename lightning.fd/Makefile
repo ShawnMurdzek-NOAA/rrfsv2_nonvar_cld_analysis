@@ -1,8 +1,8 @@
 
 # Compiler settings
 # diag-disable=10448 flag is needed to disable warning about how ifort is deprecated
-FFLAGS=-diag-disable=10448 -traceback
-#FFLAGS=-diag-disable=10448 -traceback -g -warn all -check all
+#FFLAGS=-diag-disable=10448 -traceback
+FFLAGS=-diag-disable=10448 -traceback -g -warn all -check all
 
 # Components of program
 SRC=lightning_bufr_io_mod.f90 \
@@ -23,7 +23,8 @@ LIBS=-L${netcdf_fortran_ROOT}/lib -lnetcdff \
 MAP=$(map_util_dir)/misc_definitions_module.o \
     $(map_util_dir)/module_map_utils.o
 SHARE=$(share_dir)/kinds.o \
-      $(share_dir)/mpasio.o
+      $(share_dir)/mpasio.o \
+      $(share_dir)/map_proj_helper_mod.o
 
 # Compile individual f90 files
 %.o: %.f90
