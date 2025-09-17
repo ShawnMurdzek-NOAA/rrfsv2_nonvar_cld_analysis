@@ -24,7 +24,8 @@ MAP=$(map_util_dir)/misc_definitions_module.o \
     $(map_util_dir)/module_map_utils.o
 SHARE=$(share_dir)/kinds.o \
       $(share_dir)/constants.o \
-      $(share_dir)/mpasio.o
+      $(share_dir)/mpasio.o \
+      $(share_dir)/map_proj_helper_mod.o
 
 # Compile individual f90 files
 %.o: %.f90

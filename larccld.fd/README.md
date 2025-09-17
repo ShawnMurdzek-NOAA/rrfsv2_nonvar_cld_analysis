@@ -38,6 +38,7 @@ All namelist options are in a single section titles `&setup`
 | `ioption` | 2 | Interpolation option. 1 = nearest neighbor, 2 = median. Only ioption = 2 has been tested. |
 | `npts_rad` | 1 | Half length of the square box used to interpolate NASA LaRC observations (see "code overview" section). Units are grid boxes of the map projection. |
 | `userDX` | 3000. | Model mesh spacing in meters |
+| `proj_name` | CONUS | Map projection to use. Must be defined in `../share/map_proj_helper_mod.f90`. |
 | `debug` | 0 | Option to print additional output for debugging. Set to 0 to not print any additional output |
 
 #### Vector Options

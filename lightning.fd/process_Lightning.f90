@@ -28,13 +28,11 @@ program process_Lightning
   use mpi
   use kinds, only: r_kind,i_kind
   use mpasio, only: read_MPAS_dim,read_MPAS_lat_lon
+  use map_utils
+  use map_proj_helper, only: init_proj,write_corners
   use lightning_bufr_io, only: read_lightning_bufr,write_bufr_lightning
   use check_lght_qc, only: Check_Lightning_QC,Check_NLDN
   use netCDFsub_lightning, only: get_dim_att_nldn,ifexist_file,get_lightning_nldn
-
-! Modules from WPS
-  use map_utils
-  use misc_definitions_module
 
   implicit none
   INCLUDE 'netcdf.inc'
@@ -45,10 +43,6 @@ program process_Lightning
 
 ! Map projection
   type(proj_info) :: proj
-  integer :: nlat, nlon
-  real :: lat1, lon1, truelat1, truelat2, stdlon, dx, knowni, knownj
-  real :: ll_lat, ur_lat, left_lat, bot_lat, right_lat, top_lat
-  real :: ll_lon, ur_lon, left_lon, bot_lon, right_lon, top_lon
 
 !  For MPAS mesh
   integer(i_kind) :: nCell
@@ -84,8 +78,9 @@ program process_Lightning
 
   integer      :: NLDN_filenum
   logical      :: IfAlaska
+  character(len=25) :: proj_name
   namelist/setup/analysis_time,minute,trange_start,trange_end,&
-                 obs_type,NLDN_filenum,IfAlaska,debug
+                 obs_type,NLDN_filenum,IfAlaska,proj_name,debug
 !
 !  ** misc
   integer, allocatable :: cell_id(:,:,:),lght_id(:,:,:),index_m(:,:),index_l(:,:)
@@ -115,6 +110,7 @@ program process_Lightning
      trange_end=0
      minute=0
      obs_type="none"
+     proj_name='CONUS'
      debug=0
      inquire(file='namelist.lightning', EXIST=ifexist )
      if(ifexist) then
@@ -130,49 +126,8 @@ program process_Lightning
 ! define map projection (Lambert Conformal, similar to HRRR)
 !
 
-     lat1 = 38.5
-     lon1 = -97.5
-     truelat1 = 38.5
-     truelat2 = 38.5
-     stdlon = -97.5
-     dx = 3000.
-! HRRR grid
-!     nlat = 1060
-!     nlon = 1800
-! Slightly larger grid for MPAS
-     nlat = 1200
-     nlon = 2000
-     knowni = 0.5 * nlon - 1.
-     knownj = 0.5 * nlat - 1.
-
-     call map_set(PROJ_LC, &
-                  proj, &
-                  lat1=lat1, &
-                  lon1=lon1, &
-                  truelat1=truelat1, &
-                  truelat2=truelat2, &
-                  stdlon=stdlon, &
-                  dx=dx, &
-                  knowni=knowni, &
-                  knownj=knownj)
-
-! get corners of map projection
-
-     call ij_to_latlon(proj, 0., 0., ll_lat, ll_lon)
-     call ij_to_latlon(proj, real(nlon), real(nlat), ur_lat, ur_lon)
-     call ij_to_latlon(proj, 0., real(knowni), left_lat, left_lon)
-     call ij_to_latlon(proj, real(knownj), 0., bot_lat, bot_lon)
-     call ij_to_latlon(proj, real(nlon), knowni, right_lat, right_lon)
-     call ij_to_latlon(proj, real(knownj), real(nlat), top_lat, top_lon)
-
-     write(*,*)
-     write(*,*) 'map projection:'
-     write(*,*) 'llcrnr    =', ll_lat, ll_lon
-     write(*,*) 'urcrnr    =', ur_lat, ur_lon
-     write(*,*) 'left ctr  =', left_lat, left_lon
-     write(*,*) 'bot ctr   =', bot_lat, bot_lon
-     write(*,*) 'right ctr =', right_lat, right_lon
-     write(*,*) 'top ctr   =', top_lat, top_lon
+     call init_proj(proj, proj_name)
+     call write_corners(proj)
 
 !
 ! get model domain dimension
@@ -195,8 +150,8 @@ program process_Lightning
 ! Map each MPAS cell to the closest map projection integer coordinate
 !
     nCell_mp=8
-    allocate(cell_id(nlon,nlat,nCell_mp))
-    allocate(index_m(nlon,nlat))
+    allocate(cell_id(proj%nlon,proj%nlat,nCell_mp))
+    allocate(index_m(proj%nlon,proj%nlat))
     allocate(x_m(nCell))
     allocate(y_m(nCell))
     cell_id = -99
@@ -210,8 +165,8 @@ program process_Lightning
       y_m(i) = yc
       ic = int(xc+0.5)
       jc = int(yc+0.5)
-      if ( (ic.ge.1 .and. ic.le.nlon) .and. &
-           (jc.ge.1 .and. jc.le.nlat) ) then
+      if ( (ic.ge.1 .and. ic.le.proj%nlon) .and. &
+           (jc.ge.1 .and. jc.le.proj%nlat) ) then
         if ( index_m(ic,jc).lt.nCell_mp ) then
           index_m(ic,jc) = index_m(ic,jc) + 1
           cell_id(ic,jc,index_m(ic,jc)) = i
@@ -308,8 +263,8 @@ program process_Lightning
 ! -----------------------------------------------------------
 !
         nlght_mp=2000
-        allocate(lght_id(nlon,nlat,nlght_mp))
-        allocate(index_l(nlon,nlat))
+        allocate(lght_id(proj%nlon,proj%nlat,nlght_mp))
+        allocate(index_l(proj%nlon,proj%nlat))
         allocate(x_l(numStrike))
         allocate(y_l(numStrike))
         lght_id = -99
@@ -324,8 +279,8 @@ program process_Lightning
             y_l(i) = yc
             ic = int(xc+0.5)
             jc = int(yc+0.5)
-            if ( (ic.ge.1 .and. ic.le.nlon) .and. &
-                 (jc.ge.1 .and. jc.le.nlat) ) then
+            if ( (ic.ge.1 .and. ic.le.proj%nlon) .and. &
+                 (jc.ge.1 .and. jc.le.proj%nlat) ) then
               if ( index_l(ic,jc).lt.nlght_mp ) then
                 index_l(ic,jc) = index_l(ic,jc) + 1
                 lght_id(ic,jc,index_l(ic,jc)) = i
@@ -352,15 +307,15 @@ program process_Lightning
 !
 !  Use nearest-neighbor to interpolate lightning to MPAS mesh
 !
-        do i=1,nlon
-          do j=1,nlat
+        do i=1,proj%nlon
+          do j=1,proj%nlat
             if (index_l(i,j).gt.0) then
               do ilght=1,index_l(i,j)
                 l_id = lght_id(i,j,ilght)
                 d = 1.e9
                 nearest_id = -99
-                do ii=max(1,i-1), min(nlon,i+1)
-                  do jj=max(1,j-1), min(nlon,j+1)
+                do ii=max(1,i-1), min(proj%nlon,i+1)
+                  do jj=max(1,j-1), min(proj%nlon,j+1)
                     if (index_m(ii,jj).gt.0) then
                       do icell=1,index_m(ii,jj)
                         c_id = cell_id(ii,jj,icell)

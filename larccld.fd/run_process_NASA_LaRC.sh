@@ -17,6 +17,7 @@ obs_dir="../../test_data/obs"
 mpas_mesh_file="../../test_data/mpas_south_3.5km.grid.nc"
 dx=3500.0
 valid=2024050813
+proj_name='CONUS'
 
 
 # Run Program
@@ -44,6 +45,7 @@ cat << EOF > namelist.nasalarc
   npts_rad=3,
   ioption = 2,
   userDX = ${dx},
+  proj_name='${proj_name}',
   debug=1,
  /
 EOF

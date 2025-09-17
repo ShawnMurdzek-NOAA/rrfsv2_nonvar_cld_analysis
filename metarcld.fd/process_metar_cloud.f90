@@ -61,11 +61,12 @@ program  process_metar_cloud
   integer :: debug
   character(len=100) :: prepbufrfile
   real(r_kind)       :: twindin
+  character(len=25)  :: proj_name
   namelist/setup/ analysis_time,analysis_minute,prepbufrfile,twindin,&
                   metar_impact_radius,l_metar_impact_radius_change, &
                   metar_impact_radius_max,metar_impact_radius_min, &
                   metar_impact_radius_max_height,metar_impact_radius_min_height,&
-                  debug
+                  proj_name,debug
 !
 !  ** misc
       
@@ -97,6 +98,7 @@ program  process_metar_cloud
      prepbufrfile='prepbufr'
      analysis_minute=0
      twindin=0.5
+     proj_name='CONUS'
      debug=0
  
      inquire(file='namelist.metarcld', EXIST=ifexist )
@@ -128,7 +130,7 @@ program  process_metar_cloud
      write(6,*)
 !
      call read_prepbufr_metarcld(prepbufrfile,analysis_time,analysis_minute,&
-                                 twindin,nCell,lat_m,lon_m)
+                                 twindin,nCell,lat_m,lon_m,proj_name)
 
      write(*,*) 'number of cloud on MPAS mesh=',ndata
      write(*,*) obstype,nreal,nchanl,ilat,ilon,sis

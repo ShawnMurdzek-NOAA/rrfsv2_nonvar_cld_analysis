@@ -16,7 +16,7 @@ fix_dir='../fix/'
 obs_dir="../../test_data/obs"
 mpas_mesh_file="../../test_data/mpas_south_3.5km.grid.nc"
 valid=2024050813
-
+proj_name='CONUS'
 
 # Build Program
 # =========================
@@ -51,6 +51,7 @@ cat << EOF > namelist.lightning
   trange_start=-10,
   trange_end=10,
   obs_type = "bufr",
+  proj_name = '${proj_name}',
   debug=1
  /
 
