@@ -106,6 +106,8 @@ def extract_col(lat, lon, larc_df, ceil_df, refl_ds, lght_df, mesh_ds, bgd_ds, a
     """
 
     # Determine MPAS cell index closest to the (lat, lon) coordinate
+    # Note that the MPAS cell index from the processed ob files will be idx+1 (b/c Python
+    # uses 0 as the first index)
     mpas_lat = np.rad2deg(mesh_ds['latCell'].values)
     mpas_lon = np.rad2deg(mesh_ds['lonCell'].values)
     mpas_lon[mpas_lon > 180] = mpas_lon[mpas_lon > 180] - 360
@@ -114,14 +116,14 @@ def extract_col(lat, lon, larc_df, ceil_df, refl_ds, lght_df, mesh_ds, bgd_ds, a
     # Extract observational fields
     out_dict = {}
     out_dict['larc'] = larc_df.iloc[idx, :]
-    out_dict['ceil'] = ceil_df.loc[ceil_df['icell'] == idx, :]
+    out_dict['ceil'] = ceil_df.loc[ceil_df['icell'] == (idx+1), :]
     out_dict['refl'] = refl_ds.sel(cell=idx)
     z = out_dict['refl']['height'].values - mesh_ds['ter'][idx].values
     out_dict['refl']['z_agl'] = xr.DataArray(z, 
                                              dims=['height'], 
                                              coords={'height':out_dict['refl']['height'].values},
                                              attrs={'units':'m AGL'})
-    out_dict['lght'] = lght_df.loc[lght_df['cell_id'] == idx, :]
+    out_dict['lght'] = lght_df.loc[lght_df['cell_id'] == (idx+1), :]
 
     # Extract MPAS fields
     out_dict['lat'] = mpas_lat[idx]
@@ -166,7 +168,7 @@ def plot_col(in_dict):
 
     # Configure plot
     fig, axes = plt.subplots(nrows=2, ncols=5, figsize=(12, 8), sharey=True)
-    plt.subplots_adjust(hspace=0.35, wspace=0.1, left=0.07, bottom=0.09, right=0.99, top=0.88)
+    plt.subplots_adjust(hspace=0.35, wspace=0.1, left=0.07, bottom=0.09, right=0.99, top=0.89)
     lsize = 11
 
     # Ceilometer observations
@@ -174,6 +176,8 @@ def plot_col(in_dict):
     for i in range(1, 4):
         if ~np.isnan(in_dict['ceil'][f"base{i}"].values[0]):
             ax.plot(in_dict['ceil'][f"okta{i}"], in_dict['ceil'][f"base{i}"], 'bo')
+        if np.isclose(in_dict['ceil']['cover1'].values[0], 0):
+            ax.plot(0, 0, 'bo', ms=10)
     ax.set_xlim([-1.5, 8.5])
     ax.set_xlabel('ceilometer okta', size=lsize)
 
@@ -205,7 +209,7 @@ def plot_col(in_dict):
         ax_inc.plot(in_dict['ana'][f].T - in_dict['bgd'][f].T, in_dict['hgt'], 'b-')
         ax_inc.set_xlabel(f"diff {in_dict['bgd'][f].attrs['long_name']}\n({in_dict['bgd'][f].attrs['units']})", size=lsize)
 
-    axes[0, 1].set_xlim([250, 350])
+    axes[0, 1].set_xlim([250, 325])
 
     # MPAS background, analysis, and increments: Hydrometeor fields
     colors = ['#66CCEE', '#AA3377', '#228833', '#CCBB44', '#4477AA']
@@ -213,8 +217,8 @@ def plot_col(in_dict):
     ax_raw = axes[0, 4]
     ax_inc = axes[1, 4]
     for i, (f, c) in enumerate(zip(fields, colors)):
-        ax_raw.plot(1e3*in_dict['bgd'][f].T, in_dict['hgt'], c=c, ls='--', label=f"{f}_b")
-        ax_raw.plot(1e3*in_dict['ana'][f].T, in_dict['hgt'], c=c, ls='-', label=f"{f}_a")
+        ax_raw.plot(1e3*in_dict['bgd'][f].T, in_dict['hgt'], c=c, ls='--', lw=2, label=f"{f}_b")
+        ax_raw.plot(1e3*in_dict['ana'][f].T, in_dict['hgt'], c=c, ls='-', lw=1, label=f"{f}_a")
         ax_raw.set_xlabel(f"hydrometeor fields\n(g kg-1)", size=lsize)
         ax_raw.legend(ncol=2)
 
@@ -229,7 +233,7 @@ def plot_col(in_dict):
     if len(in_dict['lght']) == 0:
         lght_str = ''
     else:
-        lght_str = f"nstrikes = {in_dict['lght']['nstrikes']}"
+        lght_str = f"nstrikes = {in_dict['lght']['nstrikes'].values[0]}"
     plt.suptitle(f"{in_dict['lat']:.3f} deg N, {in_dict['lon']:.3f} deg E\n{larc_str}\n{lght_str}", size=14)
     for i in range(2):
         axes[i, 0].set_ylabel('height (m AGL)', size=lsize)
