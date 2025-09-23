@@ -1,0 +1,13 @@
+# Input parameters for plot_cld_analysis_columns.py
+
+lat: [33.4, 29.4]
+lon: [-94.0, -98.5]
+
+larc_fname: '../run/nasa_larc_obs_interp.txt'
+ceil_fname: '../run/processed_metar_obs_mpas.txt'
+refl_fname: '../run/Gridded_ref.nc'
+lght_fname: '../run/lightning_interp.txt'
+
+invariant_fname: '../run/mesh.nc'
+bgd_fname: '../../test_data/mpas_south3.5km/mpasout.2024-05-08_13.00.00.nc'
+ana_fname: '../run/mpasout.nc'
