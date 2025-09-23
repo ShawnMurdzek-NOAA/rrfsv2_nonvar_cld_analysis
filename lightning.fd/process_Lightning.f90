@@ -397,8 +397,8 @@ program process_Lightning
        open(13, file="lightning_interp.txt", status="new", action="write")
        write(13,'(4a12)') 'cell_id', 'lat', 'lon', 'nstrikes'
        do j=1,numlightning
-          c_id = int(lightning_out(1,j))
-          write(13,'(I12,2f12.3,I12)') c_id,lat_m(c_id),lon_m(c_id),int(lightning_out(3,j))
+          c_id = int(lightning_out(2,j))
+          write(13,'(I12,2f12.3,I12)') c_id,lat_m(c_id),lon_m(c_id),int(lightning_out(4,j))
        enddo
        close(13)
      endif
