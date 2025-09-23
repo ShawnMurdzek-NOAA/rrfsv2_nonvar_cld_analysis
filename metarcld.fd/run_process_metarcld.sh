@@ -41,7 +41,7 @@ cat << EOF > namelist.metarcld
   analysis_time = ${valid},
   prepbufrfile='prepbufr'
   twindin=0.5,
-  metar_impact_radius=17,
+  metar_impact_radius=20,
   proj_name='${proj_name}',
   debug=1,
  /
