@@ -34,7 +34,7 @@ module get_mpas_bk_mod
   use constants, only: rd,h1000,rd_over_cp,grav
   use constants, only: rad2deg
   use mpasio, only: read_MPAS_dim,read_MPAS_2D_real,read_MPAS_1D_real,read_MPAS_1D_int
-  use mpasio, only: update_MPAS_2D_real
+  use mpasio, only: update_MPAS_2D_real,create_MPAS_2D_real
 
   implicit none
   private
@@ -49,6 +49,7 @@ module get_mpas_bk_mod
   public :: read_mpas_bk
   public :: update_mpas
   public :: release_mem_mpas
+  public :: write_new_2d_field_mpas
 !
 !
 ! background
@@ -491,6 +492,35 @@ contains
     call gather_write_2d_field(mype,mpasout_fname,varname,ges_qnc)
 
   end subroutine update_mpas
+
+  subroutine write_new_2d_field_mpas(mype, field, varname)
+!---------------------------------------------------------------------------------------------------
+!
+! Write a new 2D field to an existing MPAS netCDF file
+!
+!
+! shawn.s.murdzek@noaa.gov
+!---------------------------------------------------------------------------------------------------
+
+    implicit none
+
+    integer, intent(in) :: mype
+    real(r_single), intent(in) :: field(1,nCell,nz)
+    character(len=50), intent(in) :: varname
+
+    character(len=50) :: namedim1,namedim2
+
+! Create field
+    namedim1='nCells'
+    namedim2='nVertLevels'
+    if (mype == 0) then
+      call create_MPAS_2D_real(mpasout_fname,namedim1,namedim2,varname)    
+    endif
+
+! Fill field
+    call gather_write_2d_field(mype,mpasout_fname,varname,field)
+
+  end subroutine write_new_2d_field_mpas
 
   subroutine release_mem_mpas
 !---------------------------------------------------------------------------------------------------

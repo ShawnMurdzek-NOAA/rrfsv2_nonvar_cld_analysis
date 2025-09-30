@@ -3,7 +3,7 @@
 
 # User-defined arguments
 
-machine='gaeaC6'
+machine='ursa'
 
 # You shouldn't need to modify anything beyond this point
 

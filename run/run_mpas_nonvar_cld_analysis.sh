@@ -1,22 +1,20 @@
 #!/bin/sh
 
-#SBATCH -M c6
-#SBATCH -A bil-pmp
+#SBATCH -A wrfruc
 #SBATCH -t 00:10:00
 #SBATCH --ntasks=48
-#SBATCH --qos=debug
 
 # Script to run all components of the nonvar cloud analysis for MPAS for a single time
 
 # Input Parameters
 # ================
 
-machine='gaeaC6'
+machine='ursa'
 env_dir='../env/'
 fix_dir='../fix/'
-obs_dir="../../../../test_data/obs"
-mpas_invariant_file="../../../../test_data/south3.5km.invariant.nc_L60_RAP"
-mpasout_file="../../../../test_data/mpas_south3.5km/mpasout.2024-05-08_13.00.00.nc"
+obs_dir="../../test_data/obs"
+mpas_invariant_file="../../test_data/south3.5km.invariant.nc_L60_RAP"
+mpasout_file="../../test_data/mpas_south3.5km/mpasout.2024-05-08_13.00.00.nc"
 dx=3500.0
 valid=2024050813
 proj_name='CONUS'
@@ -209,6 +207,7 @@ cat << EOF > gsiparm.anl
   iday=${valid:6:2},
   ihour=${valid:8:2},
   iminute=00,
+  dump_cld_cover_3d=1,
  /
  &RAPIDREFRESH_CLDSURF
    dfi_radar_latent_heat_time_period=20.0,

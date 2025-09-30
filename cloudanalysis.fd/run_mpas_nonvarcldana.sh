@@ -47,6 +47,7 @@ cat << EOF > gsiparm.anl
   iday=${valid:6:2},
   ihour=${valid:8:2},
   iminute=00,
+  dump_cld_cover_3d=1,
  /
  &RAPIDREFRESH_CLDSURF
    dfi_radar_latent_heat_time_period=20.0,

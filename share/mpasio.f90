@@ -308,14 +308,12 @@ subroutine update_MPAS_2D_real(mpasfile, ndim1, ndim2, field, data, add_dim)
 !   ndim2 : integer
 !     Length of the second dimension for field
 !   field : string
-!     2D real field to read
+!     2D real field to update
+!   data : real
+!     Real field
 !   add_dim : boolean, optional
 !     Option to explicitly add a single element in the last dimension (usually time)
 !
-! Outputs
-!   data : real
-!     Real field
-! 
 !
 ! shawn.s.murdzek@noaa.gov
 !---------------------------------------------------------------------------------------------------
@@ -351,5 +349,60 @@ subroutine update_MPAS_2D_real(mpasfile, ndim1, ndim2, field, data, add_dim)
   call handle_nc_error(stat, routine_name)
 
 end subroutine update_MPAS_2D_real
+
+subroutine create_MPAS_2D_real(mpasfile, namedim1, namedim2, field)
+!---------------------------------------------------------------------------------------------------
+!
+! Create a new 2D real variable in an MPAS netCDF file
+!
+! Inputs
+!   mpasfile : string
+!     MPAS netCDF file name
+!   namedim1 : string
+!     Name of the first dimensions
+!   namedim2 : string
+!     Name of the first dimensions
+!   field : string
+!     Name of the variable to add 
+! 
+!
+! shawn.s.murdzek@noaa.gov
+!---------------------------------------------------------------------------------------------------
+
+  implicit none
+  character(len=100), intent(in) :: mpasfile
+  character(len=50), intent(in) :: namedim1,namedim2
+  character(len=50), intent(in) :: field
+
+  integer :: ncid,stat,dim1id,dim2id,fieldid,timeid
+  character(len=50) :: routine_name
+
+  routine_name = 'create_MPAS_2D_real'
+
+! Open netCDF file, then place in define mode
+  stat = nf90_open(mpasfile, nf90_write, ncid)
+  call handle_nc_error(stat, routine_name)
+  stat = nf90_redef(ncid)
+  call handle_nc_error(stat, routine_name)
+
+! Determine indices for field dimensions
+  stat = nf90_inq_dimid(ncid, 'Time', timeid)
+  call handle_nc_error(stat, routine_name)
+  stat = nf90_inq_dimid(ncid, trim(namedim1), dim1id)
+  call handle_nc_error(stat, routine_name)
+  stat = nf90_inq_dimid(ncid, trim(namedim2), dim2id)
+  call handle_nc_error(stat, routine_name)
+
+! Create new variable. Variable will be initialized with fill values
+  stat = nf90_def_var(ncid, field, nf90_float, (/ dim2id, dim1id, timeid /), fieldid)
+  call handle_nc_error(stat, routine_name)
+
+! Take netCDF file out of define mode and close
+  stat = nf90_enddef(ncid)
+  call handle_nc_error(stat, routine_name)
+  stat = nf90_close(ncid)
+  call handle_nc_error(stat, routine_name)
+
+end subroutine create_MPAS_2D_real
 
 end module mpasio

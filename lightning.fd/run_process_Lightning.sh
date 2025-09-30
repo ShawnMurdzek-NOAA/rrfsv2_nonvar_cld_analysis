@@ -1,16 +1,15 @@
 #!/bin/sh
 
-#SBATCH -M c6
-#SBATCH -A bil-pmp
+#SBATCH -A wrfruc
 #SBATCH -t 00:10:00
 #SBATCH --ntasks=1
-#SBATCH --qos=debug
+#SBATCH --mem=20GB
 
 # Script to run process_Lightning.exe for MPAS for a single time
 
 # Input Parameters
 # ================
-machine='gaeaC6'
+machine='ursa'
 env_dir='../env/'
 fix_dir='../fix/'
 obs_dir="../../test_data/obs"

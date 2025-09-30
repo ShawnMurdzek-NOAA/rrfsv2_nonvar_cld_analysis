@@ -57,6 +57,7 @@ Namelist options are included in either `&SETUP` or `&RAPIDREFRESH_CLDSURF`
 | `ihour` | 10 | Hour of analysis time. |
 | `iminute` | 0 | Minute of analysis time. |
 | `isecond` | 0 | Second of analysis time. |
+| `dump_cld_cover_3d` | 0 | Add cld\_cover\_3d field to output netCDF file. Useful for debugging. |
 
 #### RAPIDREFRESH\_CLDSURF
 

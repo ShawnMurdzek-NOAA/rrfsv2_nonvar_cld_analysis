@@ -59,7 +59,7 @@ program cloudanalysis
                                       r_cloudfrac_threshold,l_cld_uncertainty
 
   use namelist_mod, only: load_namelist
-  use namelist_mod, only: iyear,imonth,iday,ihour,iminute,isecond
+  use namelist_mod, only: iyear,imonth,iday,ihour,iminute,isecond,dump_cld_cover_3d
 
   use get_mpas_bk_mod, only: nCell_full,nCell,nz,lon2,lat2,nsig
   use get_mpas_bk_mod, only: displ_1d,displ_2d,counts_send_1d,counts_send_2d
@@ -67,6 +67,7 @@ program cloudanalysis
   use get_mpas_bk_mod, only: ges_ql,ges_qi,ges_qr,ges_qs,ges_qg,ges_qnr,ges_qni,ges_qnc,ges_qcf
   use get_mpas_bk_mod, only: xlon,xlat,xland,soiltbk
   use get_mpas_bk_mod, only: read_mpas_init,read_mpas_bk,update_mpas,release_mem_mpas
+  use get_mpas_bk_mod, only: write_new_2d_field_mpas 
 !
   implicit none
 
@@ -230,6 +231,8 @@ program cloudanalysis
 
   real(r_kind),parameter :: am_r = pi * 1000.0_r_kind / 6.0_r_kind
   real(r_kind)           :: lambda
+
+  character(len=50) :: varname
 
 ! local variables used for adjustment of qr/qs for RTMA_3D to alleviate ghost reflectivity
   logical         :: print_verbose
@@ -1383,6 +1386,13 @@ endif
 !  update background for analysis results
 !
   call update_mpas(mype)
+  if (dump_cld_cover_3d .gt. 0) then
+    write(6,*)
+    write(6,*) 'Writing cld_cover_3d'
+    write(6,*)
+    varname='cld_cover_3d'
+    call write_new_2d_field_mpas(mype,cld_cover_3d,varname) 
+  endif
   if(l_cld_uncertainty) then
     write(6,*) 'ERROR: Cannot update hydrometeor uncertainty with MPAS'
     stop

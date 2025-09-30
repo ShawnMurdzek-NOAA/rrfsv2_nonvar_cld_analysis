@@ -75,12 +75,14 @@ module namelist_mod
 
     integer :: ios
     integer :: iyear,imonth,iday,ihour,iminute,isecond
+    integer :: dump_cld_cover_3d
     integer :: fv3_io_layout_y
     integer :: fv3sar_bg_opt
-    namelist/setup/iyear,imonth,iday,ihour,iminute,isecond,fv3_io_layout_y,fv3sar_bg_opt
+    namelist/setup/iyear,imonth,iday,ihour,iminute,isecond,dump_cld_cover_3d,fv3_io_layout_y,fv3sar_bg_opt
 ! set subroutines to public
   public :: load_namelist
   public :: iyear,imonth,iday,ihour,iminute,isecond
+  public :: dump_cld_cover_3d
   public :: fv3_io_layout_y
   public :: fv3sar_bg_opt
 
@@ -120,6 +122,7 @@ contains
     ihour=10
     iminute=0
     isecond=0
+    dump_cld_cover_3d=0
     fv3_io_layout_y=1
     fv3sar_bg_opt=0 
 
