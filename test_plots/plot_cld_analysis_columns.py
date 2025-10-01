@@ -187,6 +187,13 @@ def plot_col(in_dict):
     p1d = np.squeeze(p1d)
     ztop = np.interp([ptop], np.flip(p1d), np.flip(in_dict['hgt']))
     ax.axhline(ztop, ls='--', c='r', label='LaRC ptop')
+
+    # Add cld_cover_3d (if it exists) to ceilometer plot
+    if 'cld_cover_3d' in in_dict['ana']:
+        cld_cover_3d = in_dict['ana']['cld_cover_3d'].values.T
+        cld_cover_3d[np.where(cld_cover_3d < 0)] = np.nan
+        cld_cover_3d = 8 * cld_cover_3d
+        ax.plot(cld_cover_3d, in_dict['hgt'], 'k-', label='cld_cover_3d')
     ax.legend()
 
     # Reflectivity observations

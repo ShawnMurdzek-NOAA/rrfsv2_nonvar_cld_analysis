@@ -3,7 +3,7 @@
 # The code comes from the py_scripts repo (https://github.com/ShawnMurdzek-NOAA/py_scripts/tree/main)
 
 # HPC machine
-machine='gaeaC6'
+machine='ursa'
 
 # MPAS input files
 invariant_file=../../test_data/south3.5km.invariant.nc_L60_RAP
@@ -12,6 +12,9 @@ ana_file=../run/mpasout.nc
 
 # Model levels to plot
 lvls=(9 10 11 12 13 14 15)
+
+# Option to plot cld_cover_3d
+plot_cld_cover=1
 
 # Plotting domain
 minlat=25
@@ -32,6 +35,15 @@ case ${machine} in
     script_dir=~/src/py_scripts/mpas
     ;;
 
+  'ursa')
+    module use /scratch3/BMC/wrfruc/murdzek/conda/modulefiles
+    module load miniforge3/25.3.0
+    conda activate base
+    conda activate /scratch3/BMC/wrfruc/murdzek/conda/env/my_py
+    export PYTHONPATH=$PYTHONPATH:/scratch3/BMC/wrfruc/murdzek/src/
+    script_dir=/scratch3/BMC/wrfruc/murdzek/src/py_scripts/mpas
+    ;;
+
   *)
     echo "Unknown machine option ${machine}"
     ;;
@@ -49,6 +61,20 @@ vmax_diff=(0.25          0.001  0.0002  0.0002)
 for l in ${lvls[@]}; do
   echo
   echo ${l}
+
+  if [[ ${plot_cld_cover} -eq 1 ]]; then
+    python ${script_dir}/plot_mpas_hcrsxn.py ${ana_file} \
+                                             ${invariant_file} \
+                                             --outtag ana \
+                                             -l ${l} \
+                                             -f cld_cover_3d \
+                                             --vmin -1 \
+                                             --vmax 1 \
+                                             --minlat ${minlat} \
+                                             --maxlat ${maxlat} \
+                                             --minlon ${minlon} \
+                                             --maxlon ${maxlon}
+  fi
 
   for j in "${!fields[@]}"; do
     python ${script_dir}/plot_mpas_hcrsxn.py ${bgd_file} \
